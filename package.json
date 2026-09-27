@@ -1,0 +1,33 @@
+{
+  "name": "liquid-launcher",
+  "productName": "Liquid Launcher",
+  "version": "0.1.0",
+  "description": "Inoffizieller Minecraft-Launcher mit Liquid-Glass-UI (kein Mojang-Branding)",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "electron-store": "^8.2.0",
+    "msmc": "^5.0.5"
+  },
+  "build": {
+    "appId": "com.example.liquidlauncher",
+    "productName": "Liquid Launcher",
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ]
+  }
+}

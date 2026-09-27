@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# Abhaengigkeiten und Build-Artefakte
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+build/
+out/
+*.log
+
+# ---------------------------------------------------------------------------
+# Gradle-Cache (Lokal, nicht Quellcode)
+#
+# fuer Fabric/Forge. Die eigentlichen Gradle-Dateien (build.gradle.kts,
+# settings.gradle.kts, gradle.properties) sind Quellcode und werden
+# mitveroeffentlicht - nur der Cache nicht.
+# ---------------------------------------------------------------------------
+.gradle/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+
+# ---------------------------------------------------------------------------
+# NIEMALS oeffentlich machen: veralteter Geruest-Stand vom 20.09.2026
+#
+# launcher\liquid-launcher\liquid-launcher\ enthaelt eine aeltere Kopie
+# desselben Projekts (dort ist auth.js 93 statt 560 Zeilen lang). Nichts im
+# Projekt verweist darauf, sie wird von nichts geladen. Sie steht hier, damit
+# sie nicht versehentlich mitveroeffentlicht wird - die Quelle liegt in src\.
+# ---------------------------------------------------------------------------
+liquid-launcher/
+
+# ---------------------------------------------------------------------------
+# Lokale Konfiguration und Benutzerdaten
+#
+# Ein Minecraft-accessToken ist ein vollwertiges Login-Credential. Deshalb
+# darf accounts.json niemals in ein Repository. In diesem Projekt liegen die
+# Benutzerdaten ausserhalb unter %APPDATA%\Liquid Launcher\ - die Eintraege
+# hier sind nur Absicherung fuer den Fall, dass die App je auf den eigenen
+# Ordner zeigt.
+# ---------------------------------------------------------------------------
+config.json
+accounts.json
+accounts.json.enc
+instance-settings.json
+instances/
+instances.json
+versions/
+logs/
+
+# WICHTIG: mit fuehrendem Schraegstrich - also nur der Ordner IM
+# WURZELVERZEICHNIS, nicht jeder Ordner namens "assets".
+#
+# Ohne den Schraegstrich traegt "assets/" auch src/renderer/assets/ und damit
+# genau die elf Theme-Hintergrundbilder (.jpg), ohne die die Oberflaeche leer
+# bleibt. Das ist keine theoretische Sorge: die elf Dateien fehlten kurz vor
+# diesem Eintrag tatsaechlich im Commit.
+#
+# Gefallen ist das, weil nur geprueft wurde, was NICHT drin sein darf. eine
+# pruefung der Form "keine unerwarteten Dateien" ist durch diese fehlerart
+# vollstaendig gruen geblieben - sie kann einen fehlenden ordner nicht sehen.
+# Was hier noetig war, ist die umgekehrte frage: sind die erwarteten dateien
+# drin?
+#
+# Der Spiele-Asset-Cache liegt ohnehin unter %APPDATA%\Liquid Launcher\assets\
+# und gar nicht erst in diesem Ordner. Dieser Eintrag ist reine Absicherung.
+/assets/
+
+# ---------------------------------------------------------------------------
+# Betriebssystem
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
