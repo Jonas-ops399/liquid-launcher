@@ -1,0 +1,91 @@
+<!doctype html>
+<!--
+  widgets/uhr/widget.html
+
+  Laeuft in einem sandboxed iframe: kein require, kein process, kein
+  window.launcher, kein Zugriff auf Dateien. Der einzige Kontakt zum Launcher
+  ist die Nachricht von unten.
+
+  Diese Datei ist absichtlich der einfachste denkbare Einstieg in eigene
+  Widgets - wer sie gelesen hat, versteht den ganzen Vertrag.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<style>
+  /* transparent, sonst liegt ein weisses Rechteck auf dem Glas der Kachel */
+  html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
+  body {
+    display:flex; align-items:center; justify-content:center;
+    font-family: inherit; -webkit-user-select:none; user-select:none;
+  }
+  .mitte { text-align:center; line-height:1.15; }
+  .zeile { display:flex; align-items:baseline; justify-content:center; gap:5px; }
+  .zeit { font-size:29px; font-weight:650; letter-spacing:-.5px; color:var(--ll-text-hi, #fff); }
+  .sek  { font-size:15px; font-weight:600; color:var(--ll-text-lo, rgba(255,255,255,.55)); }
+  .datum{ font-size:12px; color:var(--ll-text-lo, rgba(255,255,255,.55)); margin-top:3px; }
+  .nix  { font-size:13px; color:var(--ll-text-lo, rgba(255,255,255,.55)); }
+</style>
+</head>
+<body>
+<div class="mitte" id="mitte">
+  <div class="zeile"><span class="zeit" id="zeit">--:--</span><span class="sek" id="sek"></span></div>
+  <div class="datum" id="datum"></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var locale = 'de-DE';
+
+  function melde(typ, felder) {
+    // '*' ist hier richtig: das Ziel ist ein iframe mit undurchsichtiger
+    // Herkunft, fuer die es keinen Namen gibt, an den man binden koennte.
+    // Der Launcher prueft seinerseits, von welchem Fenster die Nachricht kam.
+    try { parent.postMessage(Object.assign({ quelle: 'liquid-launcher-widget', typ: typ }, felder || {}), '*'); }
+    catch (e) { /* im Sandbox-Frame gibt es kein Object.assign in sehr alten Chromium-Versionen */ }
+  }
+
+  function male() {
+    try {
+      var jetzt = new Date();
+      document.getElementById('zeit').textContent =
+        jetzt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('sek').textContent =
+        jetzt.toLocaleTimeString(locale, { second: '2-digit' });
+      // year: '2-digit' ist hier Absicht. Ohne Jahr steht am 28. September
+      // nur "Mo., 28. Sept." - und das laesst offen, ob dieses Jahr oder
+      // vor einem Jahr gemeint ist. Zwei Stellen kosten die Kachel kaum
+      // ("28. Sept. 26") und die Mehrdeutigkeit ist weg.
+      document.getElementById('datum').textContent =
+        jetzt.toLocaleDateString(locale, {
+          weekday: 'short', day: 'numeric', month: 'short', year: '2-digit'
+        });
+    } catch (err) {
+      melde('fehler', { nachricht: 'Uhr konnte nicht zeichnen: ' + err.message });
+    }
+  }
+
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || d.quelle !== 'liquid-launcher') return;
+    if (d.typ === 'daten') {
+      if (d.daten && d.daten.sprache) { locale = d.daten.sprache; }
+      male();
+    } else if (d.typ === 'theme' && d.daten) {
+      // Die Farben kommen vom Launcher, damit die Kachel zum Theme passt,
+      // ohne dass der Benutzer sie im Widget hart codieren muss.
+      var st = document.documentElement.style;
+      for (var k in d.daten) {
+        if (k.indexOf('--') === 0) st.setProperty(k, d.daten[k]);
+      }
+    }
+  });
+
+  // Gleich die Daten anfordern - dann steht die Uhr auch ohne Ereignis richtig.
+  melde('anfrage');
+  male();
+  setInterval(male, 1000);
+})();
+</script>
+</body>
+</html>

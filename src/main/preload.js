@@ -101,5 +101,20 @@ contextBridge.exposeInMainWorld('launcher', {
     setPosition: invoke('window:setPosition'),
     center: invoke('window:center'),
     resetSize: invoke('window:resetSize')
+  },
+  // Widgets.
+  //
+  // Wichtig zum Verstehen der Sicherheitslage: diese vier Funktionen sind
+  // NICHT das, was ein Widget aufrufen kann. Sie laufen im Hauptframe, wo
+  // auch `auth` steht. Ein Widget sitzt in einem sandboxed iframe, hat
+  // dort kein `window.launcher` und kann daher keinen dieser Kanaele
+  // erreichen - es bekommt Daten ausschliesslich ueber postMessage vom
+  // Renderer, und die kommen durch filtereDatenFuerWidget() im
+  // Hauptprozess. Vergleiche README, Abschnitt "Widgets".
+  widgets: {
+    list: invoke('widgets:list'),            // verfuegbare Widgets
+    html: invoke('widgets:html'),            // HTML eines Widgets
+    daten: invoke('widgets:daten'),          // der gefilterte Datenkoffer
+    openFolder: invoke('widgets:openFolder') // Ordner fuer eigene Widgets
   }
 });

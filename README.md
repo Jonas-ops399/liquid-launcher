@@ -582,6 +582,125 @@ gemessen: eine Kachel mit 196×78 px sitzt bei `translate(4.72px, 2.92px)` nach
 simuliertem Zeigerkontakt, also unterhalb der 5px-Grenze. **Nicht verifiziert:**
 die Optik mit eigenen Augen — gemessen ist die Geometrie, nicht das Aussehen.
 
+### Widgets auf der Startseite
+
+Die vier Kacheln oben in der Startseite sind jetzt Widgets. Sie liegen als
+Ordner mit `widget.json` + `widget.html` im Projekt unter `widgets/`, und
+eigene Widgets kommen nach `%APPDATA%\Liquid Launcher\widgets\`. Beide Wurzeln
+werden gleichzeitig durchsucht — ein eigenes Widget mit derselben `id` ersetzt
+ein mitgeliefertes, ohne dass Code geändert werden muss.
+
+**Hinzufügen** in den Einstellungen unter „Widgets". **Reihenfolge und
+Entfernen** auf der Startseite über „Anpassen" oben auf der Kachelreihe (ziehen
+und `×`). Beides steht an zwei Stellen, weil beides verschiedene Fragen sind:
+*welche* Kacheln es gibt, ist eine Einstellung, *wie sie aussehen* ist_layout_.
+
+Mitgeliefert werden `uhr`, `welten`, `mods` und `laufzeit` — alle vier zeigen
+echte Werte. Die vollständige Anleitung zum Schreiben eigener Widgets steht in
+**[WIDGETS.md](WIDGETS.md)**.
+
+#### Die vier früheren Kacheln zeigten erfundene Zahlen
+
+Das war der eigentliche Anlass. Die alten Kacheln standen fest im HTML:
+
+```html
+<div class="stat-tile"><div class="val">12,4 h</div><div class="lbl">Spielzeit</div></div>
+<div class="stat-tile"><div class="val">3</div><div class="lbl">Welten</div></div>
+<div class="stat-tile"><div class="val">28</div><div class="lbl">Mods aktiv</div></div>
+<div class="stat-tile"><div class="val">99,4%</div><div class="lbl">Uptime</div></div>
+```
+
+Kein JavaScript hat diese Werte jemals geschrieben. `12,4 h`, `3`, `28` und
+`99,4%` waren ausgeschriebene Zahlen ohne Quelle. Mit den Widgeten stehen dort
+jetzt Werte, die aus dem Datenträger gezählt werden.
+
+**Eine Kachel weniger, aus einem Grund:** es gibt keine „Spielzeit". Eine echte
+Spielzeit müsste der Launcher bei jedem Start *und* Beenden mitschreiben; das ist
+nicht gebaut. Eine Kachel zu bauen, die „12,4 h" anzeigt, wäre genau der Fehler
+gewesen, den die alte Kachel gemacht hat — also steht dort lieber nichts.
+
+#### Warum ein Widget keine Kachel mit `innerHTML` ist
+
+Der naheliegende Weg wäre gewesen, den HTML-String der Kachel direkt einzusetzen.
+Das ist abgelehnt. Grund: die Kachel darf echte Daten bekommen, und eine
+eingesetzte Kachel könnte sich mit einem `onclick` an den Hauptframe hängen.
+Ein `<iframe sandbox="allow-scripts">` kann das nicht.
+
+Drei Regeln, die nicht verhandelbar sind:
+
+1. **`sandbox="allow-scripts"` ohne `allow-same-origin`.** Mit
+   `allow-same-origin` wäre die Kachel ein Frame wie die Hauptseite selbst, und
+   `frame-busting` bringt nichts mehr: gleiche Herkunft, gleiche Rechte.
+2. **Eine Positivliste der Datenfelder**, im Hauptprozess, nicht im Renderer.
+   Der Renderer hält nach einem Login das Konto-Objekt; baut er den Datenkoffer
+   selbst, landet das Token in einer Struktur, die ausschließlich zum Weiterreichen
+   gedacht ist. Die Liste hat genau sieben Felder, und ein später ergänztes
+   Datenfeld geht nicht automatisch mit.
+3. **Der Absender wird über `event.source` geprüft, nicht über `event.origin`.**
+   Ein Frame mit undurchsichtiger Herkunft hat `origin` `"null"` — eine
+   Herkunftsprüfung wäre wertlos. `event.source` lässt sich nicht fälschen.
+
+**Widgets werden nicht aus dem Internet geladen.** Auf einem Rechner, auf dem
+OAuth-Tokens liegen, ist beliebiges JavaScript aus einer fremden Quelle kein
+vertretbares Risiko. Der Ordner wird geöffnet, die Dateien werden von Hand
+hineingelegt.
+
+#### Was gemessen wurde
+
+Die Behauptung „ein Widget kommt nicht an das Token" lässt sich mit keinem
+DOM-Nachbau prüfen. `test-widgets-fenster.js` startet ein echtes Electron-Fenster
+mit dem echten `preload.js` und der echten `index.html` und lässt ein Test-Widget
+aus dem Widget-Ordner jeden Weg probieren, den ein bösartiges Widget nähme:
+
+| | Hauptseite | Widget |
+|---|---|---|
+| `window.launcher` | vorhanden | `undefined` |
+| `auth.getActiveAccount` (Token) | vorhanden | `undefined` |
+| `require` / `process` / `module` / `electron` | – | `undefined` |
+| `parent.launcher` | – | **`SecurityError`** |
+| `top.launcher` | – | **`SecurityError`** |
+| `localStorage` | – | **`SecurityError`** |
+| `document.cookie` | – | **`SecurityError`** |
+
+Im übermittelten JSON steht kein `accessToken`, keine Client-ID und kein
+AppData-Pfad. Gegenprobe, damit das nicht vakuum-grün ist: der Hauptframe
+*kann* das Token abrufen, und ein Kanal-Aufruf mit echten Testdaten liefert
+`modAnzahl: 2` und `welten: 2` — nicht 0, weil die Testdaten echte `.jar`-Dateien
+und echte `saves`-Ordner enthalten.
+
+**Drei Fehler, die dabei auffielen:**
+
+1. `widget-host.js` suchte nach einem Element `statInstanceId`, das es in
+   `index.html` nie gab. Kein Absturz — die Abfrage lieferte `''`, die Kacheln
+   bekamen einen leeren Datenkoffer und zeigten „0 Welten" bei einer Instanz,
+   die Welten hat. Ein Absturz wäre aufgefallen, eine falsche Zahl nicht.
+2. Der Sprachschlüssel hieß in den Einstellungen `language`, gelesen wurde
+   `sprache` — und `language` kommt in `src/main` **null Mal** vor. Die Uhr
+   zeigte deshalb unabhängig von der eingestellten Sprache immer Deutsch.
+   Jetzt getestet: `sprache: "de"` ergibt `14:30`, `"en"` ergibt `02:30 PM`.
+3. Der Datenkoffer enthielt ein Feld `theme`, das es nicht gibt — die
+   Einstellungen speichern nur `blockLayout` und `language`. Das Feld war
+   dauerhaft `null` und tat so, als gäbe es Farben. Die Farben kommen jetzt als
+   eigene Nachricht aus den CSS-Variablen des Fensters, die stimmen auch nach
+   einem Farbwechsel.
+
+**Verifiziert.** 96 Prüfungen in `test-widgets.js` (Suche, Manifest, Pfad-
+Traversal, Positivliste), 58 in `test-widget-anzeige.js` (was die Kacheln
+tatsächlich anzeigen — die Widget-Skripte werden mit fester Uhrzeit in einer
+Sandbox laufen gelassen und das Ergebnis geprüft), 63 in
+`test-widgets-fenster.js` (echtes Fenster).
+
+**Nicht verifiziert:** das Aussehen. Screenshots wurden erzeugt, aber nicht mit
+Augen geprüft — die Kachelhöhe von 92 px, die Raster-Umbrüche und das
+Ziehen-und-Ablegen sind gemessen, nicht gesehen.
+
+**Nicht möglich:** den gerenderten Text aus den Widget-Frames im DevTools-Kanal
+auslesen. Frames mit undurchsichtiger Herkunft laufen in einem eigenen Prozess
+(OOPIF) und erscheinen weder in `Page.getFrameTree` noch als
+Ausführungskontext des Hauptfensters. Der erste Versuch darüber fand null Frames
+und meldete leere Kacheln, ohne dass etwas kaputt war. Deshalb der zweite Weg
+über die Widget-Skripte direkt.
+
 ### Tests
 
 Skripte, die ohne Electron-Fenster laufen und daher schnell Fehler finden:
@@ -596,10 +715,21 @@ node test-worlds.js                # NBT-Leser, Welt-Metadaten, Löschschutz (94
 node test-server-ping.js           # Server-Ping, MOTD, Favicons (206 Prüfungen)
 node test-instance-settings.js     # RAM-/Auflösungs-Prüfung, Grenzfälle (185 Prüfungen)
 node test-hover-move.js             # Hover-Bewegung der Karten (19 Prüfungen)
+node test-widgets.js                # Widget-Suche, Manifest, Positivliste (96 Prüfungen)
+node test-widget-anzeige.js         # was die Kacheln wirklich anzeigen (58 Prüfungen)
 node test-ms-registration.js        # Azure-Registrierung gegen Microsoft prüfen (Netz)
 npx electron test-auth.js           # echter Login, isoliert (öffnet ein Fenster)
 node test-full-launch.js 1.21.4 60  # echter Start, ohne UI (ca. 500 MB beim ersten Mal)
+node_modules\electron\dist\electron.exe test-widgets-fenster.js   # echtes Fenster (63)
 ```
+
+`test-widgets-fenster.js` braucht das `electron.exe` aus `node_modules` direkt
+und nicht `npx electron` — es setzt vor `registerIpcHandlers()` ein eigenes
+`userData`, damit der Test weder das echte `accounts.json` noch den echten
+Widget-Ordner anfasst. Der Test meldet Konsolenfehler, trennt dabei aber
+zwischen Fehlern der App und solchen, die der Test selbst verursacht: die
+Fensterkanäle (`window:*`) liegen in `main.js` und nicht in `ipc-handlers.js`,
+also registriert dieser Test sie nicht.
 
 `test-launch-chain.js` prüft unter anderem, dass die Client-JAR an erster
 Stelle der Classpath steht, dass keine macOS-Bibliotheken auf der Windows-Classpath
@@ -1016,6 +1146,13 @@ und die macOS-Argument-Prüfung.
   Schließen des Fensters nachvollziehbar bleibt. Ein echtes Log-Panel im UI
   gibt es noch nicht.
 - **Fremde Modloader.** Wie oben: Vanilla ist verdrahtet, Fabric/Forge nicht.
+- **Spielzeit-Kachel.** Es gibt sie nicht mehr. Eine echte Spielzeit müsste der
+  Launcher bei jedem Start *und* Beenden mitschreiben — das ist nicht gebaut.
+  Bis dahin steht dort nichts, statt einer Zahl ohne Quelle.
+- **Widgets aus fremden Quellen.** Es gibt keinen Mechanismus, der Widgets
+  aus dem Internet lädt. Auf einem Rechner mit OAuth-Tokens ist beliebiges
+  JavaScript aus fremder Quelle kein vertretbares Risiko; die Dateien werden
+  von Hand in `%APPDATA%\Liquid Launcher\widgets\` gelegt.
 
 ---
 
@@ -1094,6 +1231,34 @@ ausgeschlossen.
 - Startoptionen einer Instanz beeinflussen eine andere nicht: nach dem Wechsel
   auf eine zweite Instanz stehen deren Werte in den Feldern, und beim
   Zurückwechseln kommen die eigenen zurück
+- **Widgets kommen nicht an das Token.** Im echten Fenster gemessen, nicht im
+  DOM-Nachbau: `window.launcher`, `require`, `process`, `module` und `electron`
+  sind in der Kachel `undefined`; `parent.launcher`, `top.launcher`,
+  `localStorage` und `document.cookie` werfen `SecurityError`. Im übermittelten
+  JSON steht kein `accessToken`, keine Client-ID, kein AppData-Pfad. Als
+  Gegenprobe *kann* der Hauptframe das Token abrufen, und mit echten Testdaten
+  liefert der Kanal `modAnzahl: 2` und `welten: 2`
+- **Die Kacheln zeigen echte Zahlen.** Die mitgelieferten Widget-Skripte werden
+  mit festgehaltener Uhrzeit in einer Sandbox laufen gelassen: die Uhr zeigt
+  `14:30` auf Deutsch und `02:30 PM` auf Englisch, Welten und Mods zeigen die
+  gezählten Werte, ohne `modAnzahl` zeigt „Mods" **nicht** etwa 0, sondern den
+  Ladezustand
+- **Ein kaputtes Widget reißt nichts mit.** Eine unbekannte Widget-ID erzeugt
+  eine Kachel mit Fehlermeldung; die übrigen Kacheln bleiben bestehen
+- **Entfernen und Anordnen** wirken auf `settings.json` und überdauern einen
+  Neustart; im Bearbeiten-Modus sind die Kacheln ziehbar, außerhalb nicht
+
+**Nicht verifiziert, weil man dafür hinschauen muss:**
+
+- **Wie die Widget-Kacheln aussehen.** Gemessen ist die Geometrie: 92 px
+  Kachelhöhe, Raster-Umbrüche, `sandbox="allow-scripts"` an jedem Frame, kein
+  `allow-same-origin`. Screenshots wurden erzeugt, aber nicht mit Augen
+  geprüft. Sie liegen unter
+  `%LOCALAPPDATA%\Temp\opencode\shot-startseite.png`, `shot-kacheln.png` und
+  `shot-bearbeiten.png` — der erste Aufruf des Launchers ist die eigentliche
+  Abnahme.
+- **Ob das Ziehen und Ablegen sich gut anfühlt.** Die Reihenfolge wird korrekt
+  gespeichert; die Bedienung ist ungetestet.
 
 **Noch nicht verifiziert, weil es einen echten Microsoft-Account braucht:**
 
@@ -1228,11 +1393,16 @@ src/
     worlds.js         Welten auflisten, Metadaten, loeschen (+ Pfadschutz)
     mc-ping.js        Server List Ping: Status, MOTD flachgezogen, Favicons
     instance-settings.js  Startoptionen pro Instanz: RAM + Aufloesung, geprueft
+    widgets.js        Widget-Suche, Manifest-Pruefung, Positivliste (ohne Electron)
     mods.js           Modrinth
     skins.js          Skin-/Capes-API
   renderer/
     index.html        komplettes UI (Design, Themes, Logik)
+    widget-host.js    baut die Widget-Kacheln, sandboxed Frames, Daten-Bruecke
     assets/           Hintergrund-Fotos
+widgets/               die vier mitgelieferten Widgets (uhr, welten, mods, laufzeit)
+                       eigene kommen nach %APPDATA%\Liquid Launcher\widgets\
+WIDGETS.md             Anleitung zum Schreiben eigener Widgets
 setup-client-id.js       Azure-Client-ID eintragen (mit Anleitung und Pruefung)
 test-launch-chain.js    Argument-Kette isoliert testbar
 test-full-launch.js    echter Start isoliert testbar
@@ -1244,6 +1414,9 @@ test-worlds.js         NBT-Leser, Welt-Metadaten, Loeschschutz
 test-server-ping.js    Server-Ping, MOTD, Favicons (echte TCP-Server)
 test-instance-settings.js  Startoptionen: Grenzen, Einschleus-Versuche, Datei
 test-hover-move.js        Hover-Bewegung der Karten: Weg, Grenze, Vorrang, Reduced-Motion
+test-widgets.js           Widget-Suche, Manifest, Pfad-Traversal, Positivliste
+test-widget-anzeige.js    was die Kacheln tatsaechlich anzeigen (feste Uhrzeit)
+test-widgets-fenster.js   echtes Electron-Fenster: Sandbox, Tokens, Bedienung
 test-ms-registration.js    Azure-Registrierung gegen Microsoft, mit Kontrollprobe
 test-auth.js          echter Login isoliert (npx electron, kein UI vom Launcher)
 Anmeldung-testen.bat  Doppelklick-Wrapper fuer test-auth.js (Windows)

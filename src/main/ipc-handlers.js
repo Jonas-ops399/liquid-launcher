@@ -15,7 +15,7 @@
 //   Die Reject-Meldung ist absichtlich sprechend, damit im UI klar sichtbar
 //   wird, was noch fehlt, statt stumm mit leeren Daten zu antworten.
 
-const { ipcMain, dialog, app, safeStorage } = require('electron');
+const { ipcMain, dialog, app, safeStorage, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -40,6 +40,11 @@ const { pingServer, formatAddress } = require('./mc-ping');
 // Befehlszeile, und eine falsche Zahl ist dort kein Formularfehler, sondern
 // ein Spiel, das gar nicht erst startet. Siehe der Kommentar am Dateianfang.
 const instSettings = require('./instance-settings');
+// Widget-Suche, Manifest-Pruefung und die Positivliste der Daten, die ein
+// Widget sehen darf. Ohne require('electron') im Modul selbst, damit
+// test-widgets.js unter reinem Node laufen kann - dieselbe Regel wie bei
+// app-paths.js.
+const widgetsMod = require('./widgets');
 
 const MODPACKS = [
   { id: 'talberg', name: 'Talberg', version: '1.21.4', modloader: 'fabric', lastPlayed: new Date(Date.now() - 2 * 3600e3).toISOString(), iconUrl: null },
@@ -998,6 +1003,111 @@ function registerIpcHandlers() {
     settingsStore = { ...settingsStore, ...partial };
     saveSettingsToDisk(settingsStore);
     return settingsStore;
+  });
+
+  // =================================================================
+  // Widgets
+  // =================================================================
+  // Eingebaute Widgets liegen im Projektordner neben src/, eigene in
+  // %APPDATA%\Liquid Launcher\widgets\. Beide Wurzeln werden gleichzeitig
+  // durchsucht, wobei die spaetere gewinnt - so kann ein Benutzer ein
+  // eingebautes Widget einfach mit gleichem Namen ersetzen.
+  const WIDGET_EINGEBAUT = path.join(__dirname, '..', '..', 'widgets');
+  const WIDGET_BENUTZER = path.join(app.getPath('userData'), 'widgets');
+
+  function widgetWurzeln() {
+    return [
+      { ordner: WIDGET_EINGEBAUT, quelle: widgetsMod.QUELLE_EINGEBAUT },
+      { ordner: WIDGET_BENUTZER, quelle: widgetsMod.QUELLE_BENUTZER }
+    ];
+  }
+
+  // Der Zeitpunkt, an dem der Launcher gestartet wurde. Das Widget
+  // "Laufzeit" rechnet daraus seine Anzeige - es behauptet also nichts,
+  // was nicht aus dieser einen Zahl folgt.
+  const GESTARTET_AM = Date.now();
+
+  ipcMain.handle('widgets:list', async () => {
+    return widgetsMod.listeWidgets(widgetWurzeln());
+  });
+
+  ipcMain.handle('widgets:html', async (event, id) => {
+    const r = widgetsMod.liesWidgetHtml(widgetWurzeln(), id);
+    // Kein Exception werfen: der Renderer soll ein einzelnes kaputtes
+    // Widget anzeigen koennen, nicht die ganze Kachelreihe verlieren.
+    if (!r.ok) return { ok: false, fehler: r.fehler, id: id };
+    return { ok: true, id: r.manifest.id, titel: r.manifest.titel, html: r.html };
+  });
+
+  // Der Datenkoffer, den ein Widget sehen darf.
+  //
+  // WICHTIG: der wird hier im Hauptprozess gebaut und nicht im Renderer.
+  // Der Renderer haelt nach einem erfolgreichen Login das Konto-Objekt mit
+  // dem Access-Token im Speicher. Baute er den Koffer selbst, kaeme das
+  // Token in eine Struktur, die ausschliesslich zum Weiterreichen an
+  // Widgets gedacht ist - und ein spaeter ergaenztes Datenfeld waere
+  // einen Commit lang ungeprueft unterwegs. filtereDatenFuerWidget() arbeitet
+  // deshalb auf einer Positivliste und kann ein Token nicht durchlassen,
+  // auch nicht versehentlich.
+  ipcMain.handle('widgets:daten', async (event, instanceId) => {
+    let welten = [];
+    let modAnzahl = 0;
+    let server = [];
+    let aktiveInstanz = null;
+
+    if (typeof instanceId === 'string' && instanceId) {
+      aktiveInstanz = instanceId;
+      try { welten = worlds.listWorlds(instanceDir(instanceId)); } catch { welten = []; }
+      try { modAnzahl = listInstalledMods(instanceId).length; } catch { modAnzahl = 0; }
+      try {
+        const roh = JSON.parse(fs.readFileSync(serversPath(instanceId), 'utf-8'));
+        server = Array.isArray(roh) ? roh : (roh && Array.isArray(roh.servers) ? roh.servers : []);
+      } catch { server = []; }
+    }
+
+    return widgetsMod.filtereDatenFuerWidget({
+      aktiveInstanz,
+      instanzen: MODPACKS.map(i => ({
+        id: i.id, name: i.name, version: i.version, modloader: i.modloader
+      })),
+      welten: welten.map(w => ({
+        name: w.name, version: w.version, lastPlayed: w.lastPlayed,
+        groesse: w.groesse, gameTypeName: w.gameTypeName,
+        schoen: w.schoen, cheats: w.cheats, kaputt: w.kaputt
+      })),
+      modAnzahl,
+      server: server.map(s => ({
+        name: s.name, address: s.address, online: s.online,
+        spieler: s.spieler, version: s.version, latenz: s.latenz, motd: s.motd
+      })),
+      // KEIN theme-Feld. Es gab eines, aber der Renderer legt in den
+      // Einstellungen nur "blockLayout" und "language" ab - ein "theme"
+      // existiert dort nicht, das Feld war also immer null und haette den
+      // Widgets eine leere Farbangabe vorgetaeuscht. Die Farben kommen
+      // stattdessen als eigene Nachricht direkt aus den CSS-Variablen des
+      // Fensters, siehe themeFarben() in widget-host.js. Das ist die
+      // Quelle, die auch nach einem Farbwechsel stimmt.
+      gestartetAm: GESTARTET_AM,
+      // Der Schluessel heisst "language", nicht "sprache", und der Wert ist
+      // ein Sprachcode wie "de" oder "en" - kein Locale wie "de-DE". Beides
+      // war in der ersten Fassung falsch, mit der Folge, dass die Uhr
+      // unabhaengig von der eingestellten Sprache immer Deutsch zeigte.
+      // "de" ist als toLocaleTimeString-Argument gueltig.
+      sprache: settingsStore.language || 'de'
+    });
+  });
+
+  // Den Ordner fuer eigene Widgets oeffnen. Wird er beim ersten Mal
+  // angelegt, damit niemand erst einen leeren Pfad suchen muss.
+  ipcMain.handle('widgets:openFolder', async () => {
+    try {
+      fs.mkdirSync(WIDGET_BENUTZER, { recursive: true });
+    } catch (err) {
+      return { ok: false, fehler: 'Ordner nicht anlegbar: ' + (err && err.message) };
+    }
+    const meldung = shell.openPath(WIDGET_BENUTZER);
+    if (meldung) return { ok: false, fehler: meldung };
+    return { ok: true, ordner: WIDGET_BENUTZER };
   });
 }
 

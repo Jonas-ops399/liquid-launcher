@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- Echte Zahl: kommt aus worlds.list des Hauptprozesses, nicht aus dem Markup. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
+  body { display:flex; align-items:center; justify-content:center; font-family:inherit;
+         -webkit-user-select:none; user-select:none; }
+  .mitte { text-align:center; }
+  .val { font-size:26px; font-weight:650; color:var(--ll-text-hi, #fff); }
+  .lbl { font-size:12px; color:var(--ll-text-lo, rgba(255,255,255,.55)); margin-top:2px; }
+  .zus { font-size:11px; color:var(--ll-text-lo, rgba(255,255,255,.42)); margin-top:4px; }
+  .lade { font-size:12px; color:var(--ll-text-lo, rgba(255,255,255,.45)); }
+</style>
+</head>
+<body>
+<div class="mitte" id="mitte"><div class="lade">…</div></div>
+<script>
+(function () {
+  'use strict';
+  var mitte = document.getElementById('mitte');
+  var instanz = '';
+
+  function melde(typ, felder) {
+    try { parent.postMessage(Object.assign({ quelle: 'liquid-launcher-widget', typ: typ }, felder || {}), '*'); }
+    catch (e) {}
+  }
+
+  function zeichne(d) {
+    if (!d) { mitte.innerHTML = '<div class="lade">…</div>'; return; }
+    if (!d.welten || !d.welten.length) {
+      mitte.innerHTML = '<div class="val">0</div><div class="lbl">Welten</div>' +
+        '<div class="zus">keine Spielstaende</div>';
+      return;
+    }
+    var gesamt = d.welten.length;
+    var kaputt = d.welten.filter(function (w) { return w.kaputt; }).length;
+    var spielbar = gesamt - kaputt;
+    mitte.innerHTML =
+      '<div class="val">' + spielbar + '</div>' +
+      '<div class="lbl">Welten</div>' +
+      (kaputt > 0 ? '<div class="zus">' + kaputt + ' kaputt</div>' : '') +
+      (instanz ? '' : '');
+  }
+
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || d.quelle !== 'liquid-launcher') return;
+    if (d.typ === 'theme' && d.daten) {
+      var st = document.documentElement.style;
+      for (var k in d.daten) { if (k.indexOf('--') === 0) st.setProperty(k, d.daten[k]); }
+    }
+    if (d.typ === 'daten') {
+      if (d.daten && d.daten.aktiveInstanz) instanz = d.daten.aktiveInstanz;
+      zeichne(d.daten);
+    }
+  });
+
+  melde('anfrage');
+})();
+</script>
+</body>
+</html>

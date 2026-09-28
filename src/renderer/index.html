@@ -1222,6 +1222,107 @@
   .stat-tile .val{ font-size:22px; font-weight:650; }
   .stat-tile .lbl{ font-size:12px; color:var(--text-lo); margin-top:2px;}
 
+  /* ---------- Widget-Kacheln ---------- */
+  /* Die Kachel traegt jetzt einen sandboxed iframe statt Text. padding:0,
+     weil der iframe selbst die Flaeche fuellt - sonst waere um das Widget
+     herum ein Rand, den es vorher nicht gab. */
+  .stat-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .wdg-bearbeiten-btn{
+    font:inherit; font-size:11.5px; color:var(--text-lo);
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:9px; padding:4px 10px; cursor:pointer;
+    -webkit-user-select:none; user-select:none;
+    transition: background .18s, color .18s, border-color .18s;
+  }
+  .wdg-bearbeiten-btn:hover{ background:rgba(255,255,255,0.13); color:var(--text-hi); }
+  .wdg-bearbeiten-btn.aktiv{
+    background:var(--accent); color:#2a1c0c; border-color:transparent; font-weight:600;
+  }
+  .wdg-tile{
+    padding:0; position:relative; overflow:hidden;
+    /* Eine feste Hoehe, weil ein iframe keine eigene hat. 92px fasst die
+       groesste mitgelieferte Anzeige (Uhr mit Datum) ohne Scrollbalken. */
+    height:92px;
+  }
+  .wdg-frame{ display:block; width:100%; height:100%; border:0; background:transparent; }
+  /* Platzhalter, solange das HTML geladen wird. Zeigt den Titel - dann ist
+     erkennbar, welche Kachel gerade laedt, statt eines namenlosen Balkens. */
+  .wdg-ladet{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; color:var(--text-lo);
+  }
+  .wdg-fehler{
+    position:absolute; inset:0; z-index:3;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    padding:8px; font-size:11px; line-height:1.35;
+    color:#ffb4b4; background:rgba(120,30,30,0.55);
+    overflow:auto;
+  }
+  /* Entfernen-Knopf. Versteckt, solange nicht bearbeitet wird - sonst waere
+     bei jedem Kachel-Durchfahren ein Knopf im Weg. */
+  .wdg-entf{
+    position:absolute; top:5px; right:5px; z-index:4;
+    width:20px; height:20px; padding:0; line-height:1;
+    font-size:15px; color:var(--text-lo);
+    background:rgba(0,0,0,0.42);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:6px; cursor:pointer;
+    display:none; align-items:center; justify-content:center;
+  }
+  .wdg-entf:hover{ background:rgba(190,60,60,0.85); color:#fff; border-color:transparent; }
+  .wdg-edit .wdg-tile{ cursor:grab; }
+  .wdg-edit .wdg-entf{ display:flex; }
+  .wdg-edit .wdg-tile:hover{ border-color:rgba(255,255,255,0.3); }
+  .wdg-drag{ opacity:.4; }
+  .wdg-dragover{ border-color:var(--accent) !important; border-style:dashed; }
+  .wdg-leer{
+    grid-column:1 / -1;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    min-height:92px; padding:14px;
+    border:1px dashed rgba(255,255,255,0.16); border-radius:16px;
+    font-size:12px; color:var(--text-lo);
+  }
+  .wdg-leer-loud{ border-color:rgba(255,184,107,0.4); color:var(--accent); }
+  /* Im Bearbeiten-Modus keine Hover-Verschiebung: sonst zittert die Kachel
+     beim Ziehen, weil der Zeiger ueber der Kachel ist, die man bewegt. */
+  .wdg-edit .stat-tile{ transform:none !important; }
+  @media (prefers-reduced-motion: reduce){
+    .wdg-bearbeiten-btn{ transition:none; }
+  }
+  /* Die Liste in den Einstellungen. Bewusst ein ruhiges Zeilen-Design wie
+     der Rest der Einstellungen und keine Kacheloptik - hier wird etwas
+     eingestellt, nicht angezeigt. */
+  .wdg-liste{ display:flex; flex-direction:column; gap:6px; max-width:560px; }
+  .wdg-zeile{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 10px; border-radius:11px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.10);
+  }
+  .wdg-zeile.drin{ background:rgba(255,255,255,0.09); border-color:rgba(255,184,107,0.34); }
+  .wdg-zeilen-text{ flex:1; min-width:0; }
+  .wdg-zeilen-titel{ font-size:12.5px; color:var(--text-hi); }
+  .wdg-zeilen-sub{ font-size:11px; color:var(--text-lo); margin-top:1px; }
+  .wdg-quelle{
+    font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--text-lo); border:1px solid rgba(255,255,255,0.16);
+    border-radius:5px; padding:1px 5px; margin-left:6px; white-space:nowrap;
+  }
+  .wdg-hinzu{
+    font:inherit; font-size:11.5px; color:var(--text-hi);
+    background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.18);
+    border-radius:8px; padding:4px 11px; cursor:pointer; white-space:nowrap;
+    -webkit-user-select:none; user-select:none;
+    transition: background .18s, opacity .18s;
+  }
+  .wdg-hinzu:hover:not(:disabled){ background:rgba(255,255,255,0.2); }
+  .wdg-hinzu:disabled{ opacity:.4; cursor:default; }
+  .wdg-feld{ font-size:11.5px; color:var(--text-lo); min-height:16px; }
+  .wdg-feld.fehler{ color:#ffb4b4; }
+  .wdg-feld.gut{ color:var(--accent); }
+
   .news-card{ padding:20px 22px; flex:1; overflow:hidden; display:flex; flex-direction:column;}
   .news-title{ font-size:13px; color:var(--text-lo); font-weight:500; margin-bottom:12px;}
   .news-item{
@@ -1443,13 +1544,16 @@
     </div>
 
     <div class="glass stat-card view-play" id="statCard" data-block="stat">
-      <div class="stat-title" data-i18n="stat_title">Diese Woche</div>
-      <div class="stat-grid">
-        <div class="stat-tile"><div class="val">12,4 h</div><div class="lbl" data-i18n="stat_playtime">Spielzeit</div></div>
-        <div class="stat-tile"><div class="val">3</div><div class="lbl" data-i18n="stat_worlds">Welten</div></div>
-        <div class="stat-tile"><div class="val">28</div><div class="lbl" data-i18n="stat_mods_active">Mods aktiv</div></div>
-        <div class="stat-tile"><div class="val">99,4%</div><div class="lbl" data-i18n="stat_uptime">Uptime</div></div>
+      <div class="stat-head">
+        <div class="stat-title" data-i18n="stat_title">Übersicht</div>
+        <button class="wdg-bearbeiten-btn" id="statBearbeitenBtn" type="button"
+                data-i18n="stat_customize">Anpassen</button>
       </div>
+      <!-- Leer: der Inhalt kommt aus widget-host.js, das die Kacheln aus
+           settings.json baut. Frueher standen hier vier Kacheln mit festen
+           Werten (12,4 h / 3 / 28 / 99,4%), die nie von JavaScript gefuellt
+           wurden. -->
+      <div class="stat-grid" id="statGrid"></div>
     </div>
 
     <div class="glass news-card view-play" id="newsCard" data-block="news">
@@ -1538,6 +1642,15 @@
               <div class="we-move" id="weMove" data-i18n-title="drag_move_title" title="Ziehen zum Verschieben"><span></span></div>
             </div>
             <div class="settings-hint" data-i18n="settings_window_hint">Kanten ziehen = Größe ändern · Strich in der Mitte ziehen = Fenster verschieben</div>
+
+          <div class="settings-block-title" data-i18n="settings_widgets_title">Widgets</div>
+          <div class="settings-hint" data-i18n="settings_widgets_hint">Kacheln auf der Startseite. Reihenfolge und Entfernen über „Anpassen" oben auf der Kachelreihe.</div>
+          <div class="wdg-liste" id="widgetListe"></div>
+          <div class="settings-row">
+            <button class="mod-action" id="widgetOrdnerBtn" data-i18n="settings_widgets_folder">Ordner für eigene Widgets öffnen</button>
+            <button class="mod-action" id="widgetNeuLadenBtn" data-i18n="settings_widgets_reload">Kacheln neu laden</button>
+          </div>
+          <div class="wdg-feld" id="widgetMeldung"></div>
 
             <div class="settings-block-title" data-i18n="settings_exact_values">Genaue Werte</div>
             <div class="settings-row">
@@ -1822,6 +1935,11 @@
     </div>
   </div>
 
+<!-- Widget-Host. Muss VOR dem grossen Skript geladen werden, weil dieser
+     Abschnitt window.WidgetHost aufruft. Das Skript selbst haengt nur
+     Nachrichten-Listener und baut Kachelen - es fuehrt beim Laden nichts aus,
+     das von diesem Fenster hier noch gebraucht wird. -->
+<script src="widget-host.js"></script>
 <script>
   // ---------- i18n ----------
   const TRANSLATIONS = {
@@ -1840,7 +1958,7 @@
 
       profile_signed_in: 'Microsoft-Konto · angemeldet', profile_no_account: 'Kein Account', profile_please_login: 'Bitte anmelden', guest_name: 'Gast',
 
-      stat_title: 'Diese Woche', stat_playtime: 'Spielzeit', stat_worlds: 'Welten', stat_mods_active: 'Mods aktiv', stat_uptime: 'Uptime',
+      stat_title: 'Übersicht', stat_customize: 'Anpassen', stat_playtime: 'Spielzeit', stat_worlds: 'Welten', stat_mods_active: 'Mods aktiv', stat_uptime: 'Uptime',
 
       news_title: 'Neuigkeiten',
       news_1_title: 'Update 1.21.4 verfügbar', news_1_date: 'vor 2 Tagen',
@@ -1889,7 +2007,8 @@
 
       settings_title: 'Einstellungen', settings_subtitle: 'Fenstergröße & -position',
       settings_language_title: 'Sprache',
-      settings_layout_title: 'Karten-Layout', settings_layout_hint: 'Klicken, um Größe & Reihenfolge der Karten zu bearbeiten',
+      settings_widgets_title: 'Widgets', settings_widgets_hint: 'Kacheln auf der Startseite. Reihenfolge und Entfernen ueber „Anpassen“ auf der Kachelreihe.', settings_widgets_folder: 'Ordner für eigene Widgets öffnen', settings_widgets_reload: 'Kacheln neu laden',
+    settings_layout_title: 'Karten-Layout', settings_layout_hint: 'Klicken, um Größe & Reihenfolge der Karten zu bearbeiten',
       layout_editor_done: 'Fertig', layout_editor_hint: 'Kanten ziehen = Breite/Höhe ändern (3 Stufen) · Strich in der Mitte ziehen = Reihenfolge tauschen',
       settings_window_editor_title: 'Fenster interaktiv anpassen',
       settings_window_hint: 'Kanten ziehen = Größe ändern · Strich in der Mitte ziehen = Fenster verschieben',
@@ -1919,7 +2038,7 @@
 
       profile_signed_in: 'Microsoft account · signed in', profile_no_account: 'No account', profile_please_login: 'Please sign in', guest_name: 'Guest',
 
-      stat_title: 'This week', stat_playtime: 'Playtime', stat_worlds: 'Worlds', stat_mods_active: 'Active mods', stat_uptime: 'Uptime',
+      stat_title: 'Overview', stat_customize: 'Customize', stat_playtime: 'Playtime', stat_worlds: 'Worlds', stat_mods_active: 'Active mods', stat_uptime: 'Uptime',
 
       news_title: 'News',
       news_1_title: 'Update 1.21.4 available', news_1_date: '2 days ago',
@@ -1968,7 +2087,8 @@
 
       settings_title: 'Settings', settings_subtitle: 'Window size & position',
       settings_language_title: 'Language',
-      settings_layout_title: 'Card layout', settings_layout_hint: 'Click to edit card size & order',
+      settings_widgets_title: 'Widgets', settings_widgets_hint: 'Tiles on the home screen. Reorder and remove them with “Customize” on the tile row.', settings_widgets_folder: 'Open folder for own widgets', settings_widgets_reload: 'Reload tiles',
+    settings_layout_title: 'Card layout', settings_layout_hint: 'Click to edit card size & order',
       layout_editor_done: 'Done', layout_editor_hint: 'Drag edges = change width/height (3 steps) · drag the center bar = swap order',
       settings_window_editor_title: 'Adjust window interactively',
       settings_window_hint: 'Drag edges = resize · drag the center bar = move the window',
@@ -1998,7 +2118,7 @@
 
       profile_signed_in: 'Cuenta Microsoft · conectada', profile_no_account: 'Sin cuenta', profile_please_login: 'Inicia sesión', guest_name: 'Invitado',
 
-      stat_title: 'Esta semana', stat_playtime: 'Tiempo jugado', stat_worlds: 'Mundos', stat_mods_active: 'Mods activos', stat_uptime: 'Disponibilidad',
+      stat_title: 'Resumen', stat_customize: 'Personalizar', stat_playtime: 'Tiempo jugado', stat_worlds: 'Mundos', stat_mods_active: 'Mods activos', stat_uptime: 'Disponibilidad',
 
       news_title: 'Noticias',
       news_1_title: 'Actualización 1.21.4 disponible', news_1_date: 'hace 2 días',
@@ -2047,7 +2167,8 @@
 
       settings_title: 'Ajustes', settings_subtitle: 'Tamaño y posición de la ventana',
       settings_language_title: 'Idioma',
-      settings_layout_title: 'Diseño de tarjetas', settings_layout_hint: 'Haz clic para editar tamaño y orden de las tarjetas',
+      settings_widgets_title: 'Widgets', settings_widgets_hint: 'Tarjetas en la pantalla de inicio. Reordena y quita con “Personalizar” en la fila.', settings_widgets_folder: 'Abrir carpeta para widgets propios', settings_widgets_reload: 'Recargar tarjetas',
+    settings_layout_title: 'Diseño de tarjetas', settings_layout_hint: 'Haz clic para editar tamaño y orden de las tarjetas',
       layout_editor_done: 'Listo', layout_editor_hint: 'Arrastra los bordes = cambiar ancho/alto (3 niveles) · arrastra la barra central = cambiar el orden',
       settings_window_editor_title: 'Ajustar ventana de forma interactiva',
       settings_window_hint: 'Arrastra los bordes = cambiar tamaño · arrastra la barra central = mover la ventana',
@@ -2077,7 +2198,7 @@
 
       profile_signed_in: 'Compte Microsoft · connecté', profile_no_account: 'Aucun compte', profile_please_login: 'Veuillez vous connecter', guest_name: 'Invité',
 
-      stat_title: 'Cette semaine', stat_playtime: 'Temps de jeu', stat_worlds: 'Mondes', stat_mods_active: 'Mods actifs', stat_uptime: 'Disponibilité',
+      stat_title: 'Aperçu', stat_customize: 'Personnaliser', stat_playtime: 'Temps de jeu', stat_worlds: 'Mondes', stat_mods_active: 'Mods actifs', stat_uptime: 'Disponibilité',
 
       news_title: 'Actualités',
       news_1_title: 'Mise à jour 1.21.4 disponible', news_1_date: 'il y a 2 jours',
@@ -2126,7 +2247,8 @@
 
       settings_title: 'Paramètres', settings_subtitle: 'Taille et position de la fenêtre',
       settings_language_title: 'Langue',
-      settings_layout_title: 'Disposition des cartes', settings_layout_hint: 'Cliquez pour modifier taille et ordre des cartes',
+      settings_widgets_title: 'Widgets', settings_widgets_hint: 'Tuiles sur l’écran d’accueil. Réordonnez et retirez avec « Personnaliser » sur la rangée.', settings_widgets_folder: 'Ouvrir le dossier des widgets', settings_widgets_reload: 'Recharger les tuiles',
+    settings_layout_title: 'Disposition des cartes', settings_layout_hint: 'Cliquez pour modifier taille et ordre des cartes',
       layout_editor_done: 'Terminé', layout_editor_hint: 'Glisser les bords = largeur/hauteur (3 niveaux) · glisser la barre centrale = échanger l\'ordre',
       settings_window_editor_title: 'Ajuster la fenêtre de façon interactive',
       settings_window_hint: 'Glisser les bords = redimensionner · glisser la barre centrale = déplacer la fenêtre',
@@ -2573,6 +2695,10 @@
     setScene(null);
     activePreset = null;
     renderPresetGrid();
+    // Die Widgets bekommen ihre Farben als eigene Nachricht. Ohne diesen
+    // Aufruf behaelten die Kacheln die alten Farben, bis sie neu geladen
+    // werden - bei eigenstaendigen Farben also ein sichtbarer Bruch.
+    if (window.WidgetHost) window.WidgetHost.themeSenden();
   });
   // ---------- instance / modpack switcher ----------
   // Läuft über window.launcher.instances.* (echtes Electron-IPC) und fällt
@@ -2611,6 +2737,9 @@
   async function loadInstances(){
     instancesCache = window.launcher ? await window.launcher.instances.list() : MOCK_MODPACKS;
     if(!currentInstanceId && instancesCache.length) currentInstanceId = instancesCache[0].id;
+    // Die Widget-Kacheln brauchen die gewaehlte Instanz, sonst zeigten sie
+    // bei jeder Instanz "0 Welten".
+    if(window.WidgetHost) window.WidgetHost.instanzSetzen(currentInstanceId);
     renderPill();
     renderDropdown();
   }
@@ -2658,6 +2787,10 @@
         // Weltliste daher neu aufgebaut werden — sonst stehen hier die
         // Welten der zuvor gewaehlten Instanz.
         if (typeof loadWorlds === 'function') loadWorlds(true);
+        // Gleiche Sorge wie in loadInstances(): die Widgets zaehlen die
+        // Welten und Mods der GEWAEHLTEN Instanz. Ohne diesen Aufruf zeigte
+        // die Kachel nach einem Wechsel weiterhin den Stand der vorigen.
+        if (window.WidgetHost) window.WidgetHost.instanzSetzen(inst.id);
         // Fehler der Serverliste zuruecksetzen. Gehoert zum Fehler der
         // vorherigen Instanz und waere hier schlicht falsch; renderPill()
         // laedt gleich die Serverliste der neuen, aber der Fehlertext
@@ -4695,7 +4828,7 @@
       if (!currentInstanceId) return;
       // Zuruecksetzen heisst "die Empfehlung uebernehmen", nicht "auf 1/2 GB".
       // Der Vorschlag kommt vom Haupt-Prozess, weil er vom physischen
-      // Speicher abhaengt — der Renderer kennt den nicht.
+      // Speicher abhaengt - der Renderer kennt den nicht.
       try {
         const antwort = await optsHolen(currentInstanceId);
         optsSetzen(antwort.vorschlag || antwort.settings);
@@ -4705,6 +4838,124 @@
       }
     });
   }
+
+  // ---------- Widgets ----------
+  // Der Verdrahtungsteil fuer die Kacheln in den Einstellungen steht hier und
+  // nicht in widget-host.js. Grund: das Skript in widget-host.js wird VOR
+  // diesem Block geladen und weiss nichts von den Elementen der
+  // Einstellungen-Ansicht. Die Trennung ist: widget-host.js = eine Kachel
+  // bauen und versorgen, dieser Block = die Knöpfe, die den Benutzer damit
+  // steuert.
+  (function widgetSettingsVerdrahtung(){
+    const liste   = document.getElementById('widgetListe');
+    const meldung = document.getElementById('widgetMeldung');
+    const ordnerBtn = document.getElementById('widgetOrdnerBtn');
+    const neuLadenBtn = document.getElementById('widgetNeuLadenBtn');
+
+    function sag(text, art){
+      if (!meldung) return;
+      meldung.textContent = text || '';
+      meldung.className = 'wdg-feld' + (art ? ' ' + art : '');
+    }
+
+    // Die Liste der verfuegbaren Widgets mit je einem Hinzufuegen-Knopf.
+    // Wird nach jedem Aendern neu aufgebaut, damit der Knopf-Zustand ("drin"
+    // = schon platziert) nicht von Hand mitgepflegt werden muss.
+    async function listeZeichnen(){
+      if (!liste || !window.WidgetHost) return;
+      const zustand = await window.WidgetHost.starten();
+      const vorhanden = new Set(zustand.kacheln.map(k => k.id));
+
+      liste.innerHTML = '';
+      if (!zustand.verfuegbar.length){
+        const leer = document.createElement('div');
+        leer.className = 'wdg-feld';
+        leer.textContent = 'Keine Widgets gefunden.';
+        liste.appendChild(leer);
+        return;
+      }
+
+      for (const w of zustand.verfuegbar){
+        const drin = vorhanden.has(w.id);
+        const zeile = document.createElement('div');
+        zeile.className = 'wdg-zeile' + (drin ? ' drin' : '');
+
+        const text = document.createElement('div');
+        text.className = 'wdg-zeilen-text';
+        const titel = document.createElement('div');
+        titel.className = 'wdg-zeilen-titel';
+        titel.textContent = w.titel;
+        if (w.quelle === 'benutzer'){
+          const marke = document.createElement('span');
+          marke.className = 'wdg-quelle';
+          marke.textContent = 'eigenes';
+          titel.appendChild(marke);
+        }
+        text.appendChild(titel);
+        if (w.beschreibung){
+          const sub = document.createElement('div');
+          sub.className = 'wdg-zeilen-sub';
+          sub.textContent = w.beschreibung;
+          text.appendChild(sub);
+        }
+        zeile.appendChild(text);
+
+        const knopf = document.createElement('button');
+        knopf.className = 'wdg-hinzu';
+        knopf.type = 'button';
+        knopf.textContent = drin ? 'Drin' : 'Hinzufügen';
+        knopf.disabled = drin;
+        if (!drin){
+          knopf.addEventListener('click', async () => {
+            const ok = window.WidgetHost.einbauen(w.id);
+            sag(ok ? ('„' + w.titel + '" hinzugefügt.')
+                    : ('„' + w.titel + '" ist schon auf der Startseite.'), 'gut');
+            await listeZeichnen();
+          });
+        }
+        zeile.appendChild(knopf);
+        liste.appendChild(zeile);
+      }
+    }
+
+    if (ordnerBtn){
+      ordnerBtn.addEventListener('click', async () => {
+        if (!window.launcher || !window.launcher.widgets) {
+          sag('Nur in der echten App möglich.', 'fehler');
+          return;
+        }
+        const r = await window.launcher.widgets.openFolder();
+        if (r && r.ok){
+          sag('Ein Widget braucht zwei Dateien: widget.json und widget.html.');
+        } else {
+          sag((r && r.fehler) || 'Ordner liess sich nicht öffnen.', 'fehler');
+        }
+      });
+    }
+
+    if (neuLadenBtn){
+      neuLadenBtn.addEventListener('click', async () => {
+        await window.WidgetHost.starten();
+        // Neu laden ist der Weg, damit eine von Hand geaenderte
+        // widget.html ohne Neustart des Launchers sichtbar wird.
+        window.WidgetHost.rendern();
+        await listeZeichnen();
+        sag('Kacheln neu geladen.');
+      });
+    }
+
+    // Beim ersten Aufbau der Einstellungen einmal zeichnen. Verzoegert, weil
+    // zu diesem Zeitpunkt das preload noch nicht sicher bereit ist - und
+    // deshalb ist der Aufruf abgesichert, statt zu werfen.
+    if (document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', () => { listeZeichnen().catch(() => {}); });
+    } else {
+      listeZeichnen().catch(() => {});
+    }
+
+    // Fuer test-widgets-renderer.js und die Konsole
+    window.__widgetListeZeichnen = listeZeichnen;
+  })();
 </script>
 
 </body>
