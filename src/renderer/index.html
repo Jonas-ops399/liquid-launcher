@@ -22,6 +22,18 @@
     --glass-shadow: rgba(0,0,0,0.35);
     --text-hi: rgba(255,255,255,0.96);
     --text-lo: rgba(255,255,255,0.62);
+
+    /* ---------- Darstellung: Schrift und Textgroesse ----------
+       Beide Variablen setzt zur Laufzeit das Skript aus settings.json.
+       Ohne diese Zeilen zeigt die Seite den Auslieferungsstand - wichtig,
+       weil index.html auch ohne Electron (Doppelklick, Vorschau) etwas
+       Anzeigbares sein soll. */
+    --font-ui: -apple-system, "SF Pro Display", "Segoe UI", Inter, sans-serif;
+    /* Textgroesse als Faktor, 1 = normal. Steht in JEDER font-size-Angabe
+       als calc(Npx * var(--fs)). Bewusst NUR auf die Schrift, nicht auf
+       padding, border-radius oder Abstaende: wer den Text groesser
+       moechte, will keine dickeren Rahmen, sondern groessere Schrift. */
+    --fs: 1;
   }
 
   *{box-sizing:border-box; -webkit-font-smoothing:antialiased;}
@@ -29,7 +41,7 @@
   html,body{
     height:100%;
     margin:0;
-    font-family:-apple-system, "SF Pro Display", "Segoe UI", Inter, sans-serif;
+    font-family:var(--font-ui);
     overflow:hidden;
     color:var(--text-hi);
   }
@@ -323,7 +335,7 @@
   .eyebrow-row{
     display:flex; align-items:center; gap:10px;
     color: var(--text-lo);
-    font-size:13px;
+    font-size:calc(13px * var(--fs));
     margin-bottom:14px;
   }
   .dot{width:7px;height:7px;border-radius:50%; background:var(--dot); box-shadow:0 0 8px var(--dot); transition: background 0.4s ease, box-shadow 0.4s ease;}
@@ -335,7 +347,7 @@
   }
 
   .hero h1{
-    font-size:44px;
+    font-size:calc(44px * var(--fs));
     line-height:1.08;
     margin:0 0 10px 0;
     font-weight:650;
@@ -344,7 +356,7 @@
   .hero p{
     margin:0 0 30px 0;
     color: var(--text-lo);
-    font-size:15px;
+    font-size:calc(15px * var(--fs));
     max-width:420px;
     line-height:1.5;
   }
@@ -355,7 +367,7 @@
     padding:16px 34px;
     border-radius:20px;
     border:none;
-    font-size:17px;
+    font-size:calc(17px * var(--fs));
     font-weight:600;
     color:var(--btn-text);
     background: linear-gradient(155deg, var(--btn-from), var(--btn-to));
@@ -383,7 +395,7 @@
     border-radius:16px;
     background: rgba(255,255,255,0.10);
     border:1px solid rgba(255,255,255,0.22);
-    font-size:13.5px;
+    font-size:calc(13.5px * var(--fs));
     color: var(--text-hi);
     display:flex; align-items:center; gap:8px;
     cursor:pointer;
@@ -419,16 +431,16 @@
   }
   .instance-option:hover{ background: rgba(255,255,255,0.10); }
   .instance-option.active{ background: rgba(255,255,255,0.16); }
-  .instance-option .n{ font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:6px; }
-  .instance-option .m{ font-size:11.5px; color:var(--text-lo); }
+  .instance-option .n{ font-size:calc(13.5px * var(--fs)); font-weight:600; display:flex; align-items:center; gap:6px; }
+  .instance-option .m{ font-size:calc(11.5px * var(--fs)); color:var(--text-lo); }
   .instance-badge{
-    font-size:9.5px; padding:2px 6px; border-radius:6px;
+    font-size:calc(9.5px * var(--fs)); padding:2px 6px; border-radius:6px;
     background: rgba(255,255,255,0.15); color: var(--text-hi);
   }
 
   .instance-warning{
     margin-top:12px;
-    font-size:12.5px;
+    font-size:calc(12.5px * var(--fs));
     color:#ffcf8a;
     background: rgba(255,180,80,0.12);
     border:1px solid rgba(255,180,80,0.25);
@@ -463,7 +475,7 @@
   .be-mini > div{ border-radius:5px; }
   .be-mini-sidebar{ background:rgba(255,255,255,0.18); }
   .be-mini-hero{ background:rgba(255,255,255,0.22); }
-  .be-mini-profile, .be-mini-stat, .be-mini-news{ background:rgba(255,255,255,0.16); }
+  .be-mini-profile, .be-mini-stat, .be-mini-shortcut{ background:rgba(255,255,255,0.16); }
 
   /* ---------- layout editor modal ---------- */
   .layout-editor-overlay{
@@ -489,7 +501,7 @@
   .layout-editor-header{
     width:100%;
     display:flex; align-items:center; justify-content:space-between;
-    font-size:14px; font-weight:600; color:var(--text-hi);
+    font-size:calc(14px * var(--fs)); font-weight:600; color:var(--text-hi);
   }
   .layout-editor-close{
     padding:8px 18px;
@@ -497,7 +509,7 @@
     border:none;
     background: rgba(255,255,255,0.9);
     color:#1a1a1a;
-    font-weight:600; font-size:12.5px;
+    font-weight:600; font-size:calc(12.5px * var(--fs));
     cursor:pointer;
   }
 
@@ -582,9 +594,192 @@
      mehr bekam und die Liste bei flachen Fenstern nicht mehr scrollte. */
   .view-mods, .view-worlds, .view-account, .view-settings, .view-servers, .view-launchopts{ display:none; }
 
+  /* ---------- Einstellungen: Karten, Suche, Regler ----------
+     Vorher standen hier sieben Bloecke ohne Trennung in einer einzigen
+     560px-Spalte, bei 1356px Inhaltshoehe in einem 789px hohen Panel.
+     Siehe README, Abschnitt "Einstellungen". */
   .settings-block{ display:flex; flex-direction:column; gap:10px; max-width:560px; }
-  .settings-block-title{ font-size:13px; color:var(--text-lo); font-weight:500; margin-top:10px; }
+  .settings-block-title{ font-size:calc(13px * var(--fs)); color:var(--text-lo); font-weight:500; margin-top:10px; }
   .settings-block-title:first-child{ margin-top:0; }
+
+  /* Der scrollbare Bereich. OHNE diese Regel war der Inhalt nicht
+     erreichbar: .mods-panel hatte overflow:visible, das Panel selbst
+     scrollte nicht (scrollTop blieb 0) und body/html haben
+     overflow:hidden. Alles unterhalb der Panelhoehe - darunter das
+     Microsoft-Client-ID-Feld - war damit weder sichtbar noch
+     anklickbar. */
+  .settings-scroll{
+    flex:1; min-height:0;
+    overflow-y:auto;
+    padding-right:8px;
+    margin-right:-8px;
+  }
+  .settings-kopf{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+    padding-bottom:14px;
+    /* Klebend, damit bei 9 Karten nicht der Titel aus dem Bild laeuft. */
+    position:sticky; top:0; z-index:2;
+    background:linear-gradient(180deg, var(--glass-fill-strong) 62%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  .settings-suche{
+    display:flex; align-items:center; gap:8px;
+    min-width:210px;
+    padding:7px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.18);
+    background:rgba(255,255,255,0.07);
+    transition: border-color .2s, background .2s;
+  }
+  .settings-suche:focus-within{ border-color:rgba(255,184,107,0.5); background:rgba(255,255,255,0.1); }
+  .settings-suche svg{ width:14px; height:14px; flex-shrink:0; color:var(--text-lo); }
+  .settings-suche input{
+    flex:1; min-width:0;
+    border:none; outline:none; background:none;
+    color:var(--text-hi);
+    font:inherit; font-size:calc(12.5px * var(--fs));
+    padding:0;
+  }
+  .settings-suche input::placeholder{ color:var(--text-lo); }
+  /* Die Statuszeile sitzt in der klebenden Kopfzeile und waechst nach rechts,
+     statt die Suche zu schieben. */
+  .settings-kopf .settings-note{ margin-top:0; text-align:right; }
+
+  /* Das Raster der Einstellungs-Karten. repeat(auto-fit, minmax(...)) statt
+     eines festen 2-Spalten-Rasters: bei schmalem Fenster rutscht eine
+     Karte dann in die nächste Reihe, statt mit 300px Breite
+     rechtsbündig zerdrückt zu stehen.
+     400px ist keine Zufallszahl: 400*3 + 2*14 = 1228 waere breiter als das
+     Panel (1112px bei 1400px Fenster), also bleiben es bei jedem
+     Fenstergroesse genau zwei Spalten. */
+  .settings-raster{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(400px, 1fr));
+    gap:14px;
+    align-items:start;
+  }
+  .settings-karte{
+    display:flex; flex-direction:column; gap:12px;
+    padding:16px 18px;
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.05);
+    min-width:0;
+    transition: border-color .2s, background .2s, transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s;
+  }
+  .settings-karte:hover{
+    border-color:rgba(255,255,255,0.22);
+    background:rgba(255,255,255,0.075);
+    transform:translateY(-2px);
+    box-shadow:0 12px 26px -14px rgba(0,0,0,0.6);
+  }
+  /* Die breite Karte (Microsoft-Login mit der nummerierten Anleitung) ueber
+     beide Spalten, damit die ol nicht in einer halben Breite umbricht. */
+  .settings-karte.breit{ grid-column:1 / -1; }
+  .settings-karte.unsichtbar{ display:none; }
+  .settings-karte-kopf{ display:flex; align-items:center; gap:9px; }
+  .settings-karte-titel{ font-size:calc(14px * var(--fs)); font-weight:600; }
+  .settings-karte-kopf svg{ width:16px; height:16px; color:var(--accent); flex-shrink:0; }
+  /* Zeile: Beschriftung links, Bedienelement rechts. Wird per Flex umgebrochen,
+     damit auf schmalen Karten das Element nicht in die Mitte gequetscht
+     wird. */
+  .settings-feld{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap;
+    font-size:calc(12.5px * var(--fs));
+    color:var(--text-hi);
+  }
+  .settings-feld > label{ color:var(--text-lo); }
+  .settings-feld-kopf{ font-size:calc(12.5px * var(--fs)); color:var(--text-lo); }
+
+  /* Auswahl- und Textfelder der Karten. */
+  .settings-select{
+    flex:1; min-width:150px; max-width:260px;
+    padding:7px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.18);
+    background:rgba(255,255,255,0.09);
+    color:var(--text-hi);
+    font:inherit; font-size:calc(12.5px * var(--fs));
+    cursor:pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .settings-select:hover{ border-color:rgba(255,255,255,0.3); }
+  .settings-select:focus{ outline:none; border-color:rgba(255,184,107,0.55); }
+  .settings-select option{ background:#16323f; color:#fff; }
+
+  /* Textgroesse als Schieber. */
+  .settings-regler{ display:flex; align-items:center; gap:10px; flex:1; min-width:170px; max-width:260px; }
+  .settings-regler input[type="range"]{
+    flex:1; min-width:80px; height:4px;
+    -webkit-appearance:none; appearance:none;
+    background:rgba(255,255,255,0.20);
+    border-radius:2px;
+    cursor:pointer;
+  }
+  .settings-regler input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:14px; height:14px; border-radius:50%;
+    background:var(--accent);
+    border:2px solid rgba(0,0,0,0.28);
+    box-shadow:0 1px 4px rgba(0,0,0,0.4);
+  }
+  .settings-regler input[type="range"]:focus-visible::-webkit-slider-thumb{ box-shadow:0 0 0 3px rgba(255,184,107,0.35); }
+  .settings-wert{
+    font-variant-numeric:tabular-nums;
+    min-width:44px; text-align:right;
+    font-size:calc(12px * var(--fs)); color:var(--text-lo);
+  }
+
+  /* Umschalter. Ein <button role="switch"> statt einer Checkbox, damit er
+     genauso aussieht wie die anderen Knoepfe des Launchers. */
+  .settings-schalter{
+    position:relative;
+    width:46px; height:26px; flex-shrink:0;
+    padding:0; border-radius:13px;
+    border:1px solid rgba(255,255,255,0.2);
+    background:rgba(255,255,255,0.10);
+    cursor:pointer;
+    transition: background .22s, border-color .22s;
+  }
+  .settings-schalter::after{
+    content:"";
+    position:absolute; top:2px; left:2px;
+    width:20px; height:20px; border-radius:50%;
+    background:#eaf4f7;
+    box-shadow:0 1px 4px rgba(0,0,0,0.45);
+    transition: transform .22s cubic-bezier(.34,1.4,.64,1);
+  }
+  .settings-schalter[aria-checked="true"]{ background:rgba(255,184,107,0.55); border-color:rgba(255,184,107,0.7); }
+  .settings-schalter[aria-checked="true"]::after{ transform:translateX(20px); background:#fff8ec; }
+  .settings-schalter:focus-visible{ outline:2px solid rgba(255,184,107,0.6); outline-offset:2px; }
+
+  .settings-fehler{ font-size:calc(12px * var(--fs)); color:#ffb4b4; min-height:0; }
+  .settings-fehler.gut{ color:var(--accent); }
+  .settings-zuruecksetzen{
+    align-self:flex-start;
+    font:inherit; font-size:calc(11.5px * var(--fs));
+    color:var(--text-lo);
+    background:none; border:1px solid transparent;
+    border-radius:8px; padding:3px 9px; cursor:pointer;
+    transition: color .2s, background .2s, border-color .2s;
+  }
+  .settings-zuruecksetzen:hover{ color:var(--text-hi); background:rgba(255,255,255,0.09); border-color:rgba(255,255,255,0.16); }
+
+  /* Nichts gefunden. Wird per JS eingeblendet, wenn die Suche nichts trifft. */
+  .settings-leer{
+    display:none;
+    grid-column:1 / -1;
+    padding:26px 18px; text-align:center;
+    border:1px dashed rgba(255,255,255,0.16); border-radius:18px;
+    font-size:calc(12.5px * var(--fs)); color:var(--text-lo);
+  }
+  .settings-leer.an{ display:block; }
+
+  @media (prefers-reduced-motion: reduce){
+    .settings-karte, .settings-schalter, .settings-schalter::after{ transition:none; }
+  }
   /* ---------- Welten-Liste ----------
      Bewusst Zeilen und kein Kachel-Raster. Das Vorschaubild, das Minecraft
      selbst schreibt, ist 64x64 Pixel. In einer 215px breiten Kachel hochskaliert
@@ -646,7 +841,7 @@
      Panel — das ist der klassische Flexbox-Fallstrick. */
   .world-info{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:5px; }
   .world-name{
-    font-size:13.5px; font-weight:600; color:var(--text-hi);
+    font-size:calc(13.5px * var(--fs)); font-weight:600; color:var(--text-hi);
     line-height:1.25;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
@@ -655,7 +850,7 @@
     padding:2px 6px;
     border-radius:6px;
     background:rgba(255,255,255,0.09);
-    font-size:10.5px; line-height:1.45;
+    font-size:calc(10.5px * var(--fs)); line-height:1.45;
     color:var(--text-lo);
     white-space:nowrap;
   }
@@ -666,7 +861,7 @@
   .world-side{
     flex:0 0 auto;
     text-align:right;
-    font-size:10.5px; color:var(--text-lo);
+    font-size:calc(10.5px * var(--fs)); color:var(--text-lo);
     line-height:1.5; white-space:nowrap;
   }
   .world-actions{ flex:0 0 auto; display:flex; gap:6px; }
@@ -676,7 +871,7 @@
     border:1px solid rgba(255,255,255,0.16);
     background:rgba(255,255,255,0.10);
     color:var(--text-hi);
-    font-size:11.5px; font-weight:600;
+    font-size:calc(11.5px * var(--fs)); font-weight:600;
     cursor:pointer;
     transition:background .15s, border-color .15s;
     font-family:inherit;
@@ -722,19 +917,19 @@
   }
   .worlds-empty-icon{ color:rgba(255,255,255,0.20); margin-bottom:10px; }
   .worlds-empty-icon svg{ width:52px; height:52px; }
-  .worlds-empty-title{ font-size:14px; font-weight:600; color:var(--text-hi); margin-bottom:5px; }
-  .worlds-empty-hint{ font-size:12px; color:var(--text-lo); line-height:1.55; max-width:430px; margin:0 auto; }
+  .worlds-empty-title{ font-size:calc(14px * var(--fs)); font-weight:600; color:var(--text-hi); margin-bottom:5px; }
+  .worlds-empty-hint{ font-size:calc(12px * var(--fs)); color:var(--text-lo); line-height:1.55; max-width:430px; margin:0 auto; }
 
   .worlds-error{
     margin-top:14px; padding:12px 14px;
     border-radius:12px;
     border:1px solid rgba(255,122,138,0.42);
     background:rgba(255,122,138,0.12);
-    font-size:12.5px; line-height:1.5; color:#ffd3d8;
+    font-size:calc(12.5px * var(--fs)); line-height:1.5; color:#ffd3d8;
     white-space:pre-wrap; overflow-wrap:anywhere;
   }
 
-  .settings-hint{ font-size:11.5px; color:var(--text-lo); margin-top:-4px; }
+  .settings-hint{ font-size:calc(11.5px * var(--fs)); color:var(--text-lo); margin-top:-4px; }
 
   /* ---- Azure-Client-ID ---- */
   .clientid-row input{
@@ -745,7 +940,7 @@
     background: rgba(255,255,255,0.08);
     color: var(--text-hi);
     font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-    font-size:12.5px;
+    font-size:calc(12.5px * var(--fs));
     letter-spacing:0.2px;
   }
   .clientid-row input:focus{
@@ -758,7 +953,7 @@
     border-radius:11px;
     border:1px solid rgba(255,255,255,0.16);
     background: rgba(255,255,255,0.07);
-    font-size:12.5px; line-height:1.5;
+    font-size:calc(12.5px * var(--fs)); line-height:1.5;
     white-space:pre-wrap;      /* die Fehlermeldung aus dem Haupt-Prozess ist mehrzeilig */
     overflow-wrap:anywhere;   /* lange GUIDs umbrechen statt ueberlaufen */
   }
@@ -769,7 +964,7 @@
   }
   .azure-help{
     margin-top:10px;
-    font-size:12.5px;
+    font-size:calc(12.5px * var(--fs));
     color:var(--text-lo);
   }
   .azure-help summary{ cursor:pointer; padding:6px 0; }
@@ -780,7 +975,7 @@
   .azure-help b{ color:var(--text-hi); font-weight:600; }
   .azure-help code, .settings-hint code{
     font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-    font-size:11.5px;
+    font-size:calc(11.5px * var(--fs));
     padding:2px 6px;
     border-radius:6px;
     background:rgba(255,255,255,0.10);
@@ -874,7 +1069,7 @@
   .settings-row{ display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
   .settings-row label{
     display:flex; flex-direction:column; gap:6px;
-    font-size:12px; color:var(--text-lo);
+    font-size:calc(12px * var(--fs)); color:var(--text-lo);
   }
   .settings-row input{
     width:110px;
@@ -883,7 +1078,7 @@
     border:1px solid rgba(255,255,255,0.18);
     background: rgba(255,255,255,0.07);
     color: var(--text-hi);
-    font-size:14px;
+    font-size:calc(14px * var(--fs));
     outline:none;
   }
   .settings-row input:focus{ border-color: rgba(255,255,255,0.4); }
@@ -897,7 +1092,7 @@
     border-color: rgba(255,255,255,0.9);
     font-weight:600;
   }
-  .settings-note{ font-size:12px; color:var(--text-lo); min-height:16px; margin-top:4px; }
+  .settings-note{ font-size:calc(12px * var(--fs)); color:var(--text-lo); min-height:16px; margin-top:4px; }
 
   /* ---------- mods panel ---------- */
   .mods-panel{
@@ -908,8 +1103,8 @@
   .mods-header{
     display:flex; align-items:center; justify-content:space-between; gap:16px;
   }
-  .mods-title{ font-size:22px; font-weight:650; }
-  .mods-subtitle{ font-size:13px; color:var(--text-lo); margin-top:2px; }
+  .mods-title{ font-size:calc(22px * var(--fs)); font-weight:650; }
+  .mods-subtitle{ font-size:calc(13px * var(--fs)); color:var(--text-lo); margin-top:2px; }
 
   /* Statuszeile unter der Account-Liste. Zeigt waehrend des Logins den
      Fortschritt und danach Erfolg oder den konkreten Fehlergrund. Die
@@ -921,7 +1116,7 @@
     border-radius:12px;
     border:1px solid rgba(255,255,255,0.16);
     background: rgba(255,255,255,0.07);
-    font-size:13px;
+    font-size:calc(13px * var(--fs));
     line-height:1.5;
     color:var(--text-hi);
     white-space:pre-wrap;      /* behält die Zeilenumbrüche der Anleitung */
@@ -946,7 +1141,7 @@
     border:1px solid rgba(255,255,255,0.22);
     background: rgba(255,255,255,0.10);
     color: var(--text-hi);
-    font-size:13.5px; font-weight:500;
+    font-size:calc(13.5px * var(--fs)); font-weight:500;
     cursor:pointer;
     transition: background .25s, transform .25s;
     white-space:nowrap;
@@ -963,7 +1158,7 @@
     border:1px solid rgba(255,255,255,0.18);
     background: rgba(255,255,255,0.07);
     color: var(--text-hi);
-    font-size:14px;
+    font-size:calc(14px * var(--fs));
     outline:none;
   }
   .mods-search-row input::placeholder{ color: var(--text-lo); }
@@ -975,7 +1170,7 @@
     background: linear-gradient(155deg, var(--btn-from), var(--btn-to));
     color: var(--btn-text);
     font-weight:600;
-    font-size:13.5px;
+    font-size:calc(13.5px * var(--fs));
     cursor:pointer;
   }
 
@@ -984,7 +1179,7 @@
     flex:1; min-height:0;
   }
   .mods-col{ display:flex; flex-direction:column; min-height:0; }
-  .mods-col-title{ font-size:13px; color:var(--text-lo); font-weight:500; margin-bottom:10px; }
+  .mods-col-title{ font-size:calc(13px * var(--fs)); color:var(--text-lo); font-weight:500; margin-bottom:10px; }
   .mods-list{
     display:flex; flex-direction:column; gap:8px;
     overflow-y:auto;
@@ -1001,19 +1196,19 @@
     width:34px; height:34px; border-radius:10px;
     background: rgba(255,255,255,0.10);
     display:flex; align-items:center; justify-content:center;
-    font-size:16px;
+    font-size:calc(16px * var(--fs));
     flex-shrink:0;
   }
   .mod-info{ flex:1; min-width:0; }
-  .mod-name{ font-size:13.5px; font-weight:600; }
-  .mod-desc{ font-size:11.5px; color:var(--text-lo); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mod-name{ font-size:calc(13.5px * var(--fs)); font-weight:600; }
+  .mod-desc{ font-size:calc(11.5px * var(--fs)); color:var(--text-lo); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .mod-action{
     padding:7px 14px;
     border-radius:10px;
     border:1px solid rgba(255,255,255,0.2);
     background: rgba(255,255,255,0.08);
     color: var(--text-hi);
-    font-size:12px; font-weight:500;
+    font-size:calc(12px * var(--fs)); font-weight:500;
     cursor:pointer;
     white-space:nowrap;
     flex-shrink:0;
@@ -1021,7 +1216,7 @@
   }
   .mod-action:hover{ background: rgba(255,255,255,0.16); }
   .mod-action.remove{ color:#ffb3b3; border-color: rgba(255,140,140,0.3); }
-  .mods-empty{ font-size:13px; color:var(--text-lo); padding:16px 4px; }
+  .mods-empty{ font-size:calc(13px * var(--fs)); color:var(--text-lo); padding:16px 4px; }
 
   /* ---------- Serverzeile mit Live-Ping ----------
      Anders als eine Mod-Zeile hat eine Serverzeile eine EIGENE Struktur:
@@ -1058,20 +1253,20 @@
     width:34px; height:34px; border-radius:10px;
     background: rgba(255,255,255,0.10);
     display:flex; align-items:center; justify-content:center;
-    font-size:16px;
+    font-size:calc(16px * var(--fs));
     flex-shrink:0;
     overflow:hidden;
   }
   .srv-icon img{ width:100%; height:100%; object-fit:cover; image-rendering:auto; }
   .srv-info{ flex:1; min-width:0; }
   .srv-line1{ display:flex; align-items:baseline; gap:8px; min-width:0; }
-  .srv-name{ font-size:13.5px; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .srv-addr{ font-size:11.5px; color:var(--text-lo); flex-shrink:0; }
+  .srv-name{ font-size:calc(13.5px * var(--fs)); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .srv-addr{ font-size:calc(11.5px * var(--fs)); color:var(--text-lo); flex-shrink:0; }
   /* Die MOTD darf zwei Zeilen hoch sein und wird dann gekuerzt. pre-line,
      weil eine MOTD Zeilenumbrueche enthalten darf, die der Server bewusst
      gesetzt hat. */
   .srv-motd{
-    font-size:11.5px; color:var(--text-mid);
+    font-size:calc(11.5px * var(--fs)); color:var(--text-mid);
     margin-top:3px;
     white-space:pre-line;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
@@ -1081,7 +1276,7 @@
   .srv-motd.empty{ display:none; }
   .srv-meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; min-width:0; }
   .srv-chip{
-    font-size:10.5px; color:var(--text-lo);
+    font-size:calc(10.5px * var(--fs)); color:var(--text-lo);
     background: rgba(255,255,255,0.07);
     border-radius:6px; padding:2px 6px;
     max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -1099,7 +1294,7 @@
      eigene Zeile oben drueber, nicht als Dialog — sonst wuesste der Benutzer
      nach dem Zusehen nicht, welche Zeile betroffen ist. */
   .srv-error{
-    font-size:11.5px; color:#ffb3b3;
+    font-size:calc(11.5px * var(--fs)); color:#ffb3b3;
     background: rgba(255,140,140,0.12);
     border:1px solid rgba(255,140,140,0.3);
     border-radius:12px;
@@ -1129,13 +1324,13 @@
     display:flex; align-items:baseline; justify-content:space-between;
     gap:12px; flex-wrap:wrap; min-width:0;
   }
-  .opts-card-title{ font-size:14.5px; font-weight:600; }
+  .opts-card-title{ font-size:calc(14.5px * var(--fs)); font-weight:600; }
   /* Der Hinweis rechts (physischer RAM, empfohlene Auflösung) ist bewusst
      klein und nicht übersetzt, wenn er nur Zahlen enthält. */
-  .opt-hint{ font-size:11.5px; opacity:0.6; }
+  .opt-hint{ font-size:calc(11.5px * var(--fs)); opacity:0.6; }
   .opts-expl{
     margin:7px 0 14px;
-    font-size:12px; line-height:1.5; opacity:0.68;
+    font-size:calc(12px * var(--fs)); line-height:1.5; opacity:0.68;
   }
   .opts-fields{ display:flex; gap:12px; flex-wrap:wrap; }
   /* 190px Basis, nicht 130px: bei 331px Karteninhalt (der schmalste Wert bei
@@ -1147,7 +1342,7 @@
   .opt-field{
     display:flex; align-items:center; gap:8px;
     flex:1 1 190px; min-width:0;
-    font-size:12px;
+    font-size:calc(12px * var(--fs));
   }
   .opt-field > span:first-child{ white-space:nowrap; opacity:0.75; }
   .opt-field input{
@@ -1175,7 +1370,7 @@
   .opts-messages{ display:flex; flex-direction:column; gap:8px; }
   .opts-messages:empty{ display:none; }
   .opt-msg{
-    font-size:11.5px;
+    font-size:calc(11.5px * var(--fs));
     border-radius:12px;
     padding:9px 12px;
     word-break:break-word;
@@ -1207,11 +1402,11 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
   }
   .profile-meta{flex:1;}
-  .profile-meta .name{ font-weight:600; font-size:15.5px; }
-  .profile-meta .sub{ font-size:12.5px; color:var(--text-lo); margin-top:2px;}
+  .profile-meta .name{ font-weight:600; font-size:calc(15.5px * var(--fs)); }
+  .profile-meta .sub{ font-size:calc(12.5px * var(--fs)); color:var(--text-lo); margin-top:2px;}
 
   .stat-card{ padding:22px; flex:1; display:flex; flex-direction:column; gap:14px; overflow:hidden; }
-  .stat-title{ font-size:13px; color:var(--text-lo); font-weight:500;}
+  .stat-title{ font-size:calc(13px * var(--fs)); color:var(--text-lo); font-weight:500;}
   .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .stat-tile{
     background: rgba(255,255,255,0.07);
@@ -1219,8 +1414,8 @@
     border-radius:16px;
     padding:14px;
   }
-  .stat-tile .val{ font-size:22px; font-weight:650; }
-  .stat-tile .lbl{ font-size:12px; color:var(--text-lo); margin-top:2px;}
+  .stat-tile .val{ font-size:calc(22px * var(--fs)); font-weight:650; }
+  .stat-tile .lbl{ font-size:calc(12px * var(--fs)); color:var(--text-lo); margin-top:2px;}
 
   /* ---------- Widget-Kacheln ---------- */
   /* Die Kachel traegt jetzt einen sandboxed iframe statt Text. padding:0,
@@ -1228,7 +1423,7 @@
      herum ein Rand, den es vorher nicht gab. */
   .stat-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
   .wdg-bearbeiten-btn{
-    font:inherit; font-size:11.5px; color:var(--text-lo);
+    font:inherit; font-size:calc(11.5px * var(--fs)); color:var(--text-lo);
     background:rgba(255,255,255,0.07);
     border:1px solid rgba(255,255,255,0.14);
     border-radius:9px; padding:4px 10px; cursor:pointer;
@@ -1251,12 +1446,12 @@
   .wdg-ladet{
     position:absolute; inset:0;
     display:flex; align-items:center; justify-content:center;
-    font-size:12px; color:var(--text-lo);
+    font-size:calc(12px * var(--fs)); color:var(--text-lo);
   }
   .wdg-fehler{
     position:absolute; inset:0; z-index:3;
     display:flex; align-items:center; justify-content:center; text-align:center;
-    padding:8px; font-size:11px; line-height:1.35;
+    padding:8px; font-size:calc(11px * var(--fs)); line-height:1.35;
     color:#ffb4b4; background:rgba(120,30,30,0.55);
     overflow:auto;
   }
@@ -1265,7 +1460,7 @@
   .wdg-entf{
     position:absolute; top:5px; right:5px; z-index:4;
     width:20px; height:20px; padding:0; line-height:1;
-    font-size:15px; color:var(--text-lo);
+    font-size:calc(15px * var(--fs)); color:var(--text-lo);
     background:rgba(0,0,0,0.42);
     border:1px solid rgba(255,255,255,0.18);
     border-radius:6px; cursor:pointer;
@@ -1282,7 +1477,7 @@
     display:flex; align-items:center; justify-content:center; text-align:center;
     min-height:92px; padding:14px;
     border:1px dashed rgba(255,255,255,0.16); border-radius:16px;
-    font-size:12px; color:var(--text-lo);
+    font-size:calc(12px * var(--fs)); color:var(--text-lo);
   }
   .wdg-leer-loud{ border-color:rgba(255,184,107,0.4); color:var(--accent); }
   /* Im Bearbeiten-Modus keine Hover-Verschiebung: sonst zittert die Kachel
@@ -1291,6 +1486,103 @@
   @media (prefers-reduced-motion: reduce){
     .wdg-bearbeiten-btn{ transition:none; }
   }
+
+  /* Der eigene Schalter "Weniger Bewegung" setzt diese Klasse auf <html>.
+     Sie schaltet die Ueberfahrts-Transitionen ab - nicht die Bewegung selbst,
+     das macht bewegungAus() im Skript, indem es gar kein Inline-Transform
+     mehr setzt. Hier nur dieweichen: sonst spruengt die Karte nach dem
+     Ausschalten des Schalters ohne Nachlauf zurueck. */
+  .ll-wenig-bewegung .hero,
+  .ll-wenig-bewegung .profile-card,
+  .ll-wenig-bewegung .stat-card,
+  .ll-wenig-bewegung .shortcut-card,
+  .ll-wenig-bewegung .stat-tile,
+  .ll-wenig-bewegung .shortcut-kachel,
+  .ll-wenig-bewegung .settings-karte,
+  .ll-wenig-bewegung .settings-schalter,
+  .ll-wenig-bewegung .settings-schalter::after{
+    transition:none !important;
+  }
+  .ll-wenig-bewegung .shortcut-card:hover,
+  .ll-wenig-bewegung .shortcut-kachel:hover,
+  .ll-wenig-bewegung .settings-karte:hover{
+    transform:none;
+  }
+
+  /* ---------- Hover auf der Startseite ----------
+     Die vier grossen Karten hatten vorher ueberhaupt keine :hover-Regel:
+     sie waren Glaskacheln, die beim Ueberfahren exakt so aussahen wie
+     daneben. Jetzt bekommen alle vier eine sichtbare Reaktion.
+
+     Aufgeteilt in zwei Haelften, und das ist der entscheidende Punkt:
+
+     - NUR Optik (Rahmen, Flaeche, Schatten): .stat-card und .shortcut-card.
+       .stat-card darf sich nicht bewegen, weil darin die Widget-Kacheln
+       sitzen, die selbst wandern - die ganze Karte plus ihre Kacheln
+       gleichzeitig in dieselbe Richtung sieht sofort kaputt aus.
+     - Optik UND Bewegung: .hero und .profile-card. Die beiden haben keine
+       eigene Bewegung im Inneren, bzw. nur eine Schaltflaeche, fuer die
+       Stufe 1 ohnehin gewinnt (hoverTarget() gibt dann null zurueck).
+       Die Bewegung kommt aus dem Skript (HOVER_SELECTOR), NICHT aus
+       diesem :hover hier - sonst wuerden zwei Stellen dieselbe
+       transform-Eigenschaft umkämpfen. Deshalb steht hier bewusst
+       kein translate(), sondern nur border-color/background/box-shadow. */
+  .hero, .profile-card, .stat-card, .shortcut-card{
+    transition:
+      border-color .3s ease,
+      background .3s ease,
+      box-shadow .3s ease;
+  }
+  .hero:hover, .profile-card:hover, .stat-card:hover, .shortcut-card:hover{
+    border-color:rgba(255,255,255,0.55);
+    box-shadow:
+      0 24px 50px -16px var(--glass-shadow),
+      inset 0 1px 0 rgba(255,255,255,0.55),
+      inset 0 -1px 0 rgba(0,0,0,0.08);
+  }
+  /* ---------- Schnellzugriff (ersetzt die Neuigkeits-Karte) ----------
+     Die drei Newsmeldungen waren erfundener Text an erfundenen Daten
+     ("vor 2 Tagen" stand da, ohne dass irgendetwas es geprueft haette).
+     An ihrer Stelle stehen jetzt vier echte Sprungziele, die es vorher
+     nur in der Seitenleiste gab. */
+  .shortcut-card{ padding:20px 22px; flex:1; overflow:hidden; display:flex; flex-direction:column; gap:12px; }
+  .shortcut-card:hover{ transform:translateY(-2px); }
+  .shortcut-titel{ font-size:calc(13px * var(--fs)); color:var(--text-lo); font-weight:500; }
+  .shortcut-raster{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .shortcut-kachel{
+    display:flex; align-items:center; gap:10px;
+    padding:11px 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.14);
+    background:rgba(255,255,255,0.06);
+    color:var(--text-hi);
+    font:inherit; font-size:calc(12.5px * var(--fs)); font-weight:500;
+    text-align:left;
+    cursor:pointer;
+    -webkit-user-select:none; user-select:none;
+    transition: background .2s, border-color .2s, transform .25s cubic-bezier(.16,1,.3,1);
+  }
+  .shortcut-kachel:hover{
+    background:rgba(255,255,255,0.13);
+    border-color:rgba(255,255,255,0.3);
+    transform:translateY(-2px);
+  }
+  .shortcut-kachel:active{ transform:translateY(0); }
+  .shortcut-kachel svg{ width:18px; height:18px; flex-shrink:0; color:var(--accent); }
+  .shortcut-kachel:focus-visible{ outline:2px solid rgba(255,184,107,0.6); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){
+    .shortcut-kachel{ transition:none; }
+    .shortcut-card:hover, .shortcut-kachel:hover{ transform:none; }
+  }
+
+  /* Die Widget-Kacheln: bis jetzt nur Bewegung, kein sichtbarer Zustand.
+     Jetzt hellen sie genauso auf wie der Rest. */
+  .stat-tile{ transition:border-color .22s ease, background .22s ease; }
+  .stat-tile:hover{ border-color:rgba(255,255,255,0.34); background:rgba(255,255,255,0.11); }
+  @media (prefers-reduced-motion: reduce){
+    .stat-tile{ transition:none; }
+  }
+
   /* Die Liste in den Einstellungen. Bewusst ein ruhiges Zeilen-Design wie
      der Rest der Einstellungen und keine Kacheloptik - hier wird etwas
      eingestellt, nicht angezeigt. */
@@ -1303,15 +1595,15 @@
   }
   .wdg-zeile.drin{ background:rgba(255,255,255,0.09); border-color:rgba(255,184,107,0.34); }
   .wdg-zeilen-text{ flex:1; min-width:0; }
-  .wdg-zeilen-titel{ font-size:12.5px; color:var(--text-hi); }
-  .wdg-zeilen-sub{ font-size:11px; color:var(--text-lo); margin-top:1px; }
+  .wdg-zeilen-titel{ font-size:calc(12.5px * var(--fs)); color:var(--text-hi); }
+  .wdg-zeilen-sub{ font-size:calc(11px * var(--fs)); color:var(--text-lo); margin-top:1px; }
   .wdg-quelle{
-    font-size:9.5px; text-transform:uppercase; letter-spacing:.06em;
+    font-size:calc(9.5px * var(--fs)); text-transform:uppercase; letter-spacing:.06em;
     color:var(--text-lo); border:1px solid rgba(255,255,255,0.16);
     border-radius:5px; padding:1px 5px; margin-left:6px; white-space:nowrap;
   }
   .wdg-hinzu{
-    font:inherit; font-size:11.5px; color:var(--text-hi);
+    font:inherit; font-size:calc(11.5px * var(--fs)); color:var(--text-hi);
     background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.18);
     border-radius:8px; padding:4px 11px; cursor:pointer; white-space:nowrap;
     -webkit-user-select:none; user-select:none;
@@ -1319,26 +1611,9 @@
   }
   .wdg-hinzu:hover:not(:disabled){ background:rgba(255,255,255,0.2); }
   .wdg-hinzu:disabled{ opacity:.4; cursor:default; }
-  .wdg-feld{ font-size:11.5px; color:var(--text-lo); min-height:16px; }
+  .wdg-feld{ font-size:calc(11.5px * var(--fs)); color:var(--text-lo); min-height:16px; }
   .wdg-feld.fehler{ color:#ffb4b4; }
   .wdg-feld.gut{ color:var(--accent); }
-
-  .news-card{ padding:20px 22px; flex:1; overflow:hidden; display:flex; flex-direction:column;}
-  .news-title{ font-size:13px; color:var(--text-lo); font-weight:500; margin-bottom:12px;}
-  .news-item{
-    display:flex; align-items:center; gap:12px;
-    padding:10px 0;
-    border-top:1px solid rgba(255,255,255,0.09);
-  }
-  .news-item:first-child{border-top:none;}
-  .news-thumb{
-    width:36px;height:36px;border-radius:10px;
-    background: linear-gradient(150deg, var(--grass-light), var(--grass));
-    flex-shrink:0;
-    transition: background 0.6s ease;
-  }
-  .news-item .t{ font-size:13.5px; font-weight:500; }
-  .news-item .d{ font-size:11.5px; color:var(--text-lo); }
 
   /* ---------- theme switcher trigger (lives inside sidebar) ---------- */
   .theme-trigger{
@@ -1363,7 +1638,7 @@
   .theme-panel[hidden]{ display:flex; opacity:0; transform: scale(.92) translateY(8px); pointer-events:none; }
   .theme-panel:not([hidden]){ opacity:1; transform: scale(1) translateY(0); }
 
-  .theme-panel-title{ font-size:13px; font-weight:600; color:var(--text-hi); }
+  .theme-panel-title{ font-size:calc(13px * var(--fs)); font-weight:600; color:var(--text-hi); }
 
   .preset-grid{
     display:grid;
@@ -1384,7 +1659,7 @@
   .preset-swatch span{
     position:absolute; bottom:-16px; left:0; right:0;
     text-align:center;
-    font-size:9.5px;
+    font-size:calc(9.5px * var(--fs));
     color: var(--text-lo);
   }
 
@@ -1393,7 +1668,7 @@
     border-radius:14px;
     background: rgba(255,255,255,0.08);
     border:1px solid rgba(255,255,255,0.18);
-    font-size:12.5px;
+    font-size:calc(12.5px * var(--fs));
     color: var(--text-hi);
     cursor:pointer;
     text-align:center;
@@ -1411,7 +1686,7 @@
   .custom-panel[hidden]{ display:none; }
   .custom-row{
     display:flex; align-items:center; justify-content:space-between;
-    font-size:12.5px;
+    font-size:calc(12.5px * var(--fs));
     color: var(--text-lo);
   }
   .custom-row input[type="color"]{
@@ -1434,7 +1709,7 @@
     border:none;
     background: rgba(255,255,255,0.9);
     color:#1a1a1a;
-    font-size:12.5px;
+    font-size:calc(12.5px * var(--fs));
     font-weight:600;
     cursor:pointer;
     transition: transform .2s;
@@ -1453,7 +1728,7 @@
       z-index:20;
     }
     .sidebar .logo, .sidebar .sidebar-spacer{ display:none; }
-    .hero, .profile-card, .stat-card, .news-card{ grid-column:unset !important; grid-row:unset !important; }
+    .hero, .profile-card, .stat-card, .shortcut-card{ grid-column:unset !important; grid-row:unset !important; }
     .view-overlay{ grid-column:unset !important; grid-row:unset !important; }
     .theme-panel{ left:16px; right:16px; bottom:90px; width:auto; }
   }
@@ -1556,19 +1831,29 @@
       <div class="stat-grid" id="statGrid"></div>
     </div>
 
-    <div class="glass news-card view-play" id="newsCard" data-block="news">
-      <div class="news-title" data-i18n="news_title">Neuigkeiten</div>
-      <div class="news-item">
-        <div class="news-thumb"></div>
-        <div><div class="t" data-i18n="news_1_title">Update 1.21.4 verfügbar</div><div class="d" data-i18n="news_1_date">vor 2 Tagen</div></div>
-      </div>
-      <div class="news-item">
-        <div class="news-thumb"></div>
-        <div><div class="t" data-i18n="news_2_title">Community-Bauwettbewerb</div><div class="d" data-i18n="news_2_date">vor 5 Tagen</div></div>
-      </div>
-      <div class="news-item">
-        <div class="news-thumb"></div>
-        <div><div class="t" data-i18n="news_3_title">Neuer Modpack-Katalog</div><div class="d" data-i18n="news_3_date">vor 1 Woche</div></div>
+    <!-- Schnellzugriff. Ersetzt die Karte "Neuigkeiten", die drei erfundene
+         Meldungen mit erfundenen Daten zeigte ("vor 2 Tagen" stand dort, ohne
+         dass irgendetwas das geprueft haette). Diese vier Ziele sind echt und
+         wurden vorher nur in der Seitenleiste erreichbar. -->
+    <div class="glass shortcut-card view-play" id="shortcutCard" data-block="shortcut">
+      <div class="shortcut-titel" data-i18n="shortcut_title">Schnellzugriff</div>
+      <div class="shortcut-raster">
+        <button class="shortcut-kachel" type="button" data-view="worlds">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>
+          <span data-i18n="nav_worlds">Welten</span>
+        </button>
+        <button class="shortcut-kachel" type="button" data-view="mods">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <span data-i18n="nav_mods">Mods</span>
+        </button>
+        <button class="shortcut-kachel" type="button" data-view="servers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="7" rx="1.5"/><rect x="2" y="14" width="20" height="7" rx="1.5"/><circle cx="6.5" cy="6.5" r="0.7" fill="currentColor"/><circle cx="6.5" cy="17.5" r="0.7" fill="currentColor"/></svg>
+          <span data-i18n="nav_servers">Server</span>
+        </button>
+        <button class="shortcut-kachel" type="button" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+          <span data-i18n="nav_settings">Einstellungen</span>
+        </button>
       </div>
     </div>
 
@@ -1602,112 +1887,202 @@
         </div>
       </div>
 
-      <!-- ---------- Einstellungen-Ansicht ---------- -->
+      <!-- ---------- Einstellungen-Ansicht ----------
+           Fuenf Karten in einem Raster, dazu ein Suchfeld. Vorher standen
+           sieben Bloecke ohne Abgrenzung uebereinander in einer 560px-
+           Spalte: 1356px Inhalt in einem 789px hohen Panel, das nicht
+           scrollte. Siehe README, Abschnitt "Einstellungen". -->
       <div class="view-settings" id="viewSettings">
         <div class="glass mods-panel">
           <div class="mods-header">
             <div>
               <div class="mods-title" data-i18n="settings_title">Einstellungen</div>
-              <div class="mods-subtitle" data-i18n="settings_subtitle">Fenstergröße &amp; -position</div>
+              <div class="mods-subtitle" data-i18n="settings_subtitle">Sprache, Darstellung, Fenster, Widgets und Anmeldung</div>
             </div>
           </div>
 
-          <div class="settings-block">
-            <div class="settings-block-title" data-i18n="settings_language_title">Sprache</div>
-            <div class="settings-row lang-row" id="langRow"></div>
+          <div class="settings-scroll">
 
-            <div class="settings-block-title" data-i18n="settings_layout_title">Karten-Layout</div>
-            <div class="settings-hint" data-i18n="settings_layout_hint">Klicken, um Größe &amp; Position der Karten zu bearbeiten</div>
-            <button class="layout-preview-btn" id="openLayoutEditorBtn" type="button">
-              <div class="be-mini" id="beMini" aria-hidden="true"></div>
-            </button>
+            <!-- Klebende Zeile mit Suche und Status. Der Status (#settingsNote)
+                 gehoert hierher und nicht ans Ende der Liste: er meldet
+                 Dinge wie "geht nur mit Electron" und waere am Ende einer
+                 scrollenden Liste genau das, was man nicht mehr sieht. -->
+            <div class="settings-kopf">
+              <div class="settings-suche">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+                <input type="search" id="settingsSuche" autocomplete="off" spellcheck="false"
+                       placeholder="Einstellungen durchsuchen …" data-i18n-placeholder="settings_search_ph">
+              </div>
+              <div class="settings-note" id="settingsNote"></div>
+            </div>
 
-            <div class="settings-block-title" data-i18n="settings_window_editor_title">Fenster interaktiv anpassen</div>
-            <div class="window-editor" id="windowEditor">
-              <div class="we-shell">
-                <div class="we-sidebar"></div>
-                <div class="we-main">
-                  <div class="we-hero"></div>
-                  <div class="we-rightcol">
-                    <div class="we-card small"></div>
-                    <div class="we-card"></div>
-                    <div class="we-card"></div>
+            <div class="settings-raster" id="settingsRaster">
+
+              <!-- ---------- Karte 1: Darstellung ---------- -->
+              <section class="settings-karte" data-suche="darstellung anzeige sprache font schrift groesse bewegung">
+                <div class="settings-karte-kopf">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20l4.5-11L19 4.5 15.5 15 4 20z"/><path d="M13.5 10.5l4 4"/></svg>
+                  <span class="settings-karte-titel" data-i18n="card_display_title">Darstellung</span>
+                </div>
+
+                <div class="settings-feld-kopf" data-i18n="settings_language_title">Sprache</div>
+                <div class="settings-row lang-row" id="langRow"></div>
+
+                <div class="settings-feld">
+                  <label for="schriftSelect" data-i18n="settings_font_title">Schrift</label>
+                  <select class="settings-select" id="schriftSelect"></select>
+                </div>
+
+                <div class="settings-feld">
+                  <label for="schriftGroesse" data-i18n="settings_fontsize_title">Textgröße</label>
+                  <div class="settings-regler">
+                    <input type="range" id="schriftGroesse" min="85" max="125" step="5">
+                    <span class="settings-wert" id="schriftGroesseWert">100 %</span>
                   </div>
                 </div>
-              </div>
-              <div class="we-edge we-n" data-edge="n"></div>
-              <div class="we-edge we-s" data-edge="s"></div>
-              <div class="we-edge we-e" data-edge="e"></div>
-              <div class="we-edge we-w" data-edge="w"></div>
-              <div class="we-move" id="weMove" data-i18n-title="drag_move_title" title="Ziehen zum Verschieben"><span></span></div>
-            </div>
-            <div class="settings-hint" data-i18n="settings_window_hint">Kanten ziehen = Größe ändern · Strich in der Mitte ziehen = Fenster verschieben</div>
 
-          <div class="settings-block-title" data-i18n="settings_widgets_title">Widgets</div>
-          <div class="settings-hint" data-i18n="settings_widgets_hint">Kacheln auf der Startseite. Reihenfolge und Entfernen über „Anpassen" oben auf der Kachelreihe.</div>
-          <div class="wdg-liste" id="widgetListe"></div>
-          <div class="settings-row">
-            <button class="mod-action" id="widgetOrdnerBtn" data-i18n="settings_widgets_folder">Ordner für eigene Widgets öffnen</button>
-            <button class="mod-action" id="widgetNeuLadenBtn" data-i18n="settings_widgets_reload">Kacheln neu laden</button>
-          </div>
-          <div class="wdg-feld" id="widgetMeldung"></div>
+                <div class="settings-feld">
+                  <span data-i18n="settings_ownfont_title">Eigene Schriftdatei</span>
+                  <div class="settings-row">
+                    <button class="mod-action" id="eigeneSchriftBtn" data-i18n="settings_ownfont_load">Datei wählen …</button>
+                    <button class="mod-action" id="eigeneSchriftWegBtn" data-i18n="settings_ownfont_clear" hidden>Entfernen</button>
+                  </div>
+                </div>
+                <div class="settings-fehler" id="eigeneSchriftInfo"></div>
 
-            <div class="settings-block-title" data-i18n="settings_exact_values">Genaue Werte</div>
-            <div class="settings-row">
-              <label><span data-i18n="settings_width">Breite</span><input type="number" id="winWidth" min="1040" step="10"></label>
-              <label><span data-i18n="settings_height">Höhe</span><input type="number" id="winHeight" min="680" step="10"></label>
-              <button class="mod-action" id="applySizeBtn" data-i18n="settings_apply">Anwenden</button>
-            </div>
+                <div class="settings-feld">
+                  <span data-i18n="settings_motion_title">Weniger Bewegung</span>
+                  <button class="settings-schalter" id="bewegungSchalter" type="button" role="switch"
+                          aria-checked="false" data-i18n-title="settings_motion_title" title="Weniger Bewegung"></button>
+                </div>
+                <div class="settings-hint" data-i18n="settings_motion_hint">
+                  Schaltet die Karten- und Knopf-Animationen ab. Ohne eigene Einstellung gilt weiterhin „Animationen reduzieren" aus den Windows-Einstellungen.
+                </div>
 
-            <div class="settings-block-title" data-i18n="settings_position">Fensterposition</div>
-            <div class="settings-row">
-              <label>X<input type="number" id="winX" step="10"></label>
-              <label>Y<input type="number" id="winY" step="10"></label>
-              <button class="mod-action" id="applyPositionBtn" data-i18n="settings_move">Verschieben</button>
-            </div>
+                <button class="settings-zuruecksetzen" id="darstellungZuruecksetzen" type="button"
+                        data-i18n="settings_font_reset">Schrift und Größe zurücksetzen</button>
+              </section>
 
-            <div class="settings-actions">
-              <button class="import-btn" id="centerWinBtn" data-i18n="settings_center">Fenster zentrieren</button>
-              <button class="import-btn" id="resetWinBtn" data-i18n="settings_reset">Standardgröße wiederherstellen</button>
-            </div>
+              <!-- ---------- Karte 2: Startseite ---------- -->
+              <section class="settings-karte" data-suche="startseite karten layout anordnung groesse position">
+                <div class="settings-karte-kopf">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 9h18M9 21V9"/></svg>
+                  <span class="settings-karte-titel" data-i18n="settings_layout_title">Karten-Layout</span>
+                </div>
+                <div class="settings-hint" data-i18n="settings_layout_hint">Klicken, um Größe &amp; Position der Karten zu bearbeiten</div>
+                <button class="layout-preview-btn" id="openLayoutEditorBtn" type="button">
+                  <div class="be-mini" id="beMini" aria-hidden="true"></div>
+                </button>
+              </section>
 
-            <!-- ---------- Microsoft-Login: Azure-Client-ID ----------
-                 Steht hier und nicht nur als Hinweistext, weil die
-                 Client-ID Voraussetzung fuer jeden Login ist. Wer sie nicht
-                 hat, kann das Spiel starten, aber keine Welt oeffnen — und
-                 laesst sich sonst nur durch Handeditieren einer JSON-Datei
-                 im AppData-Ordner beheben.
-                 Die ID ist kein Geheimnis (Public Client), wird also
-                 unverschluesselt gespeichert. -->
-            <div class="settings-block-title" data-i18n="settings_microsoft_title">Microsoft-Login</div>
-            <div class="settings-hint" data-i18n="settings_microsoft_hint">
-              Einmalig nötig, damit du dich anmelden und Welten öffnen kannst. Application (client) ID aus dem Azure-Portal (Microsoft Entra ID → App registrations).
-            </div>
-            <div class="settings-row clientid-row">
-              <input type="text" id="clientIdInput" placeholder="12345678-1234-1234-1234-123456789012" spellcheck="false" autocomplete="off">
-              <button class="mod-action" id="saveClientIdBtn" data-i18n="settings_microsoft_save">Speichern</button>
-              <button class="mod-action" id="clearClientIdBtn" data-i18n="settings_microsoft_clear">Entfernen</button>
-            </div>
-            <div id="clientIdStatus" hidden></div>
-            <div class="settings-hint">
-              Redirect-URI (in Azure unter „Redirect URI" als <b>Mobile and desktop applications</b> eintragen):
-              <code id="redirectUriHint">https://login.live.com/oauth20_desktop.srf</code>
-            </div>
-            <!-- Verzeichnis / App / Redirect in drei Schritten, weil genau
-                 hier die meisten Abbrueche passieren. -->
-            <details class="azure-help">
-              <summary data-i18n="settings_microsoft_howto">Anleitung: App in Azure anlegen</summary>
-              <ol>
-                <li><a href="https://portal.azure.com" target="_blank" rel="noreferrer">portal.azure.com</a> → <b>Microsoft Entra ID</b> → <b>App registrations</b> → <b>New registration</b></li>
-                <li>Name, z.&nbsp;B. „Liquid Launcher"</li>
-                <li>Supported account types: <b>„Accounts in any organizational directory and personal accounts"</b> — zwingend, sonst werden Konten ohne Minecraft gefunden</li>
-                <li>Redirect URI → Plattform <b>Mobile and desktop applications</b> → den Wert von oben einfügen</li>
-                <li><b>Kein</b> Client-Secret anlegen — für eine Desktop-App wird keines gebraucht, und ein Secret landet zwangsläufig im Installer</li>
-                <li><b>Application (client) ID</b> kopieren und oben eintragen. Achtung: nicht die <b>Directory (tenant) ID</b>, die sieht ähnlich aus</li>
-              </ol>
-            </details>
+              <!-- ---------- Karte 3: Fenster ---------- -->
+              <section class="settings-karte" data-suche="fenster breite hoehe groesse position verschieben zentrieren">
+                <div class="settings-karte-kopf">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2 9h20"/></svg>
+                  <span class="settings-karte-titel" data-i18n="card_window_title">Fenster</span>
+                </div>
 
-            <div class="settings-note" id="settingsNote"></div>
+                <div class="window-editor" id="windowEditor">
+                  <div class="we-shell">
+                    <div class="we-sidebar"></div>
+                    <div class="we-main">
+                      <div class="we-hero"></div>
+                      <div class="we-rightcol">
+                        <div class="we-card small"></div>
+                        <div class="we-card"></div>
+                        <div class="we-card"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="we-edge we-n" data-edge="n"></div>
+                  <div class="we-edge we-s" data-edge="s"></div>
+                  <div class="we-edge we-e" data-edge="e"></div>
+                  <div class="we-edge we-w" data-edge="w"></div>
+                  <div class="we-move" id="weMove" data-i18n-title="drag_move_title" title="Ziehen zum Verschieben"><span></span></div>
+                </div>
+                <div class="settings-hint" data-i18n="settings_window_hint">Kanten ziehen = Größe ändern · Strich in der Mitte ziehen = Fenster verschieben</div>
+
+                <div class="settings-feld-kopf" data-i18n="settings_exact_values">Genaue Werte</div>
+                <div class="settings-row">
+                  <label><span data-i18n="settings_width">Breite</span><input type="number" id="winWidth" min="1040" step="10"></label>
+                  <label><span data-i18n="settings_height">Höhe</span><input type="number" id="winHeight" min="680" step="10"></label>
+                  <button class="mod-action" id="applySizeBtn" data-i18n="settings_apply">Anwenden</button>
+                </div>
+
+                <div class="settings-feld-kopf" data-i18n="settings_position">Fensterposition</div>
+                <div class="settings-row">
+                  <label>X<input type="number" id="winX" step="10"></label>
+                  <label>Y<input type="number" id="winY" step="10"></label>
+                  <button class="mod-action" id="applyPositionBtn" data-i18n="settings_move">Verschieben</button>
+                </div>
+
+                <div class="settings-actions">
+                  <button class="import-btn" id="centerWinBtn" data-i18n="settings_center">Fenster zentrieren</button>
+                  <button class="import-btn" id="resetWinBtn" data-i18n="settings_reset">Standardgröße wiederherstellen</button>
+                </div>
+              </section>
+
+              <!-- ---------- Karte 4: Widgets ---------- -->
+              <section class="settings-karte" data-suche="widgets kacheln uhr welten mods laufzeit">
+                <div class="settings-karte-kopf">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>
+                  <span class="settings-karte-titel" data-i18n="settings_widgets_title">Widgets</span>
+                </div>
+                <div class="settings-hint" data-i18n="settings_widgets_hint">Kacheln auf der Startseite. Reihenfolge und Entfernen über „Anpassen" oben auf der Kachelreihe.</div>
+                <div class="wdg-liste" id="widgetListe"></div>
+                <div class="settings-row">
+                  <button class="mod-action" id="widgetOrdnerBtn" data-i18n="settings_widgets_folder">Ordner für eigene Widgets öffnen</button>
+                  <button class="mod-action" id="widgetNeuLadenBtn" data-i18n="settings_widgets_reload">Kacheln neu laden</button>
+                </div>
+                <div class="wdg-feld" id="widgetMeldung"></div>
+              </section>
+
+              <!-- ---------- Karte 5: Microsoft-Login ----------
+                   Steht hier und nicht nur als Hinweistext, weil die
+                   Client-ID Voraussetzung fuer jeden Login ist. Wer sie nicht
+                   hat, kann das Spiel starten, aber keine Welt oeffnen — und
+                   laesst sich sonst nur durch Handeditieren einer JSON-Datei
+                   im AppData-Ordner beheben.
+                   Die ID ist kein Geheimnis (Public Client), wird also
+                   unverschluesselt gespeichert.
+
+                   Ueber beide Spalten, weil die nummerierte Anleitung sonst
+                   in einer halben Kartenbreite umbricht und unlesbar wird. -->
+              <section class="settings-karte breit" data-suche="microsoft login anmelden azure client id konto oauth">
+                <div class="settings-karte-kopf">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5.5 10.5 12 3 18.5"/><path d="M12 18.5h9"/></svg>
+                  <span class="settings-karte-titel" data-i18n="settings_microsoft_title">Microsoft-Login</span>
+                </div>
+                <div class="settings-hint" data-i18n="settings_microsoft_hint">
+                  Einmalig nötig, damit du dich anmelden und Welten öffnen kannst. Application (client) ID aus dem Azure-Portal (Microsoft Entra ID → App registrations).
+                </div>
+                <div class="settings-row clientid-row">
+                  <input type="text" id="clientIdInput" placeholder="12345678-1234-1234-1234-123456789012" spellcheck="false" autocomplete="off">
+                  <button class="mod-action" id="saveClientIdBtn" data-i18n="settings_microsoft_save">Speichern</button>
+                  <button class="mod-action" id="clearClientIdBtn" data-i18n="settings_microsoft_clear">Entfernen</button>
+                </div>
+                <div id="clientIdStatus" hidden></div>
+                <div class="settings-hint">
+                  Redirect-URI (in Azure unter „Redirect URI" als <b>Mobile and desktop applications</b> eintragen):
+                  <code id="redirectUriHint">https://login.live.com/oauth20_desktop.srf</code>
+                </div>
+                <!-- Verzeichnis / App / Redirect in drei Schritten, weil genau
+                     hier die meisten Abbrueche passieren. -->
+                <details class="azure-help">
+                  <summary data-i18n="settings_microsoft_howto">Anleitung: App in Azure anlegen</summary>
+                  <ol>
+                    <li><a href="https://portal.azure.com" target="_blank" rel="noreferrer">portal.azure.com</a> → <b>Microsoft Entra ID</b> → <b>App registrations</b> → <b>New registration</b></li>
+                    <li>Name, z.&nbsp;B. „Liquid Launcher"</li>
+                    <li>Supported account types: <b>„Accounts in any organizational directory and personal accounts"</b> — zwingend, sonst werden Konten ohne Minecraft gefunden</li>
+                    <li>Redirect URI → Plattform <b>Mobile and desktop applications</b> → den Wert von oben einfügen</li>
+                    <li><b>Kein</b> Client-Secret anlegen — für eine Desktop-App wird keines gebraucht, und ein Secret landet zwangsläufig im Installer</li>
+                    <li><b>Application (client) ID</b> kopieren und oben eintragen. Achtung: nicht die <b>Directory (tenant) ID</b>, die sieht ähnlich aus</li>
+                  </ol>
+                </details>
+              </section>
+
+              <div class="settings-leer" id="settingsLeer" data-i18n="settings_search_empty">Keine Einstellung passt zu dieser Suche.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1910,7 +2285,7 @@
           <div class="be-edge be-e" data-edge="e"></div>
           <div class="be-edge be-w" data-edge="w"></div>
         </div>
-        <div class="be-leaf" data-block="news">
+        <div class="be-leaf" data-block="shortcut">
           <div class="be-move" data-i18n-title="drag_move_title" title="Ziehen zum Verschieben"><span></span></div>
           <div class="be-edge be-n" data-edge="n"></div>
           <div class="be-edge be-s" data-edge="s"></div>
@@ -1960,10 +2335,14 @@
 
       stat_title: 'Übersicht', stat_customize: 'Anpassen', stat_playtime: 'Spielzeit', stat_worlds: 'Welten', stat_mods_active: 'Mods aktiv', stat_uptime: 'Uptime',
 
-      news_title: 'Neuigkeiten',
-      news_1_title: 'Update 1.21.4 verfügbar', news_1_date: 'vor 2 Tagen',
-      news_2_title: 'Community-Bauwettbewerb', news_2_date: 'vor 5 Tagen',
-      news_3_title: 'Neuer Modpack-Katalog', news_3_date: 'vor 1 Woche',
+      shortcut_title: 'Schnellzugriff',
+      card_display_title: 'Darstellung', card_window_title: 'Fenster',
+      settings_search_ph: 'Einstellungen durchsuchen …', settings_search_empty: 'Keine Einstellung passt zu dieser Suche.',
+      settings_font_title: 'Schrift', settings_fontsize_title: 'Textgröße',
+      settings_ownfont_title: 'Eigene Schriftdatei', settings_ownfont_load: 'Datei wählen …', settings_ownfont_clear: 'Entfernen',
+      settings_motion_title: 'Weniger Bewegung',
+      settings_motion_hint: 'Schaltet die Karten- und Knopf-Animationen ab. Ohne eigene Einstellung gilt weiterhin „Animationen reduzieren“ aus den Windows-Einstellungen.',
+      settings_font_reset: 'Schrift und Größe zurücksetzen',
 
       mods_title: 'Mods', mods_subtitle_tpl: 'Für Instanz „{name}" · {loader} {version}',
       mods_import: 'Eigene .jar hinzufügen', mods_search_placeholder: 'Mods durchsuchen (z. B. Sodium, Iris, JEI) …',
@@ -2005,7 +2384,7 @@
       opts_saved: 'Gespeichert.',
       opts_problem: 'Die gespeicherten Startoptionen waren unlesbar — es gelten die Standardwerte.',
 
-      settings_title: 'Einstellungen', settings_subtitle: 'Fenstergröße & -position',
+      settings_title: 'Einstellungen', settings_subtitle: 'Sprache, Darstellung, Fenster, Widgets und Anmeldung',
       settings_language_title: 'Sprache',
       settings_widgets_title: 'Widgets', settings_widgets_hint: 'Kacheln auf der Startseite. Reihenfolge und Entfernen ueber „Anpassen“ auf der Kachelreihe.', settings_widgets_folder: 'Ordner für eigene Widgets öffnen', settings_widgets_reload: 'Kacheln neu laden',
     settings_layout_title: 'Karten-Layout', settings_layout_hint: 'Klicken, um Größe & Reihenfolge der Karten zu bearbeiten',
@@ -2040,10 +2419,14 @@
 
       stat_title: 'Overview', stat_customize: 'Customize', stat_playtime: 'Playtime', stat_worlds: 'Worlds', stat_mods_active: 'Active mods', stat_uptime: 'Uptime',
 
-      news_title: 'News',
-      news_1_title: 'Update 1.21.4 available', news_1_date: '2 days ago',
-      news_2_title: 'Community build contest', news_2_date: '5 days ago',
-      news_3_title: 'New modpack catalog', news_3_date: '1 week ago',
+      shortcut_title: 'Quick access',
+      card_display_title: 'Appearance', card_window_title: 'Window',
+      settings_search_ph: 'Search settings …', settings_search_empty: 'No setting matches this search.',
+      settings_font_title: 'Font', settings_fontsize_title: 'Text size',
+      settings_ownfont_title: 'Own font file', settings_ownfont_load: 'Choose file …', settings_ownfont_clear: 'Remove',
+      settings_motion_title: 'Less motion',
+      settings_motion_hint: 'Turns off card and button animations. With no own setting, “Animation effects” from Windows still applies.',
+      settings_font_reset: 'Reset font and size',
 
       mods_title: 'Mods', mods_subtitle_tpl: 'For instance "{name}" · {loader} {version}',
       mods_import: 'Add your own .jar', mods_search_placeholder: 'Search mods (e.g. Sodium, Iris, JEI) …',
@@ -2120,10 +2503,14 @@
 
       stat_title: 'Resumen', stat_customize: 'Personalizar', stat_playtime: 'Tiempo jugado', stat_worlds: 'Mundos', stat_mods_active: 'Mods activos', stat_uptime: 'Disponibilidad',
 
-      news_title: 'Noticias',
-      news_1_title: 'Actualización 1.21.4 disponible', news_1_date: 'hace 2 días',
-      news_2_title: 'Concurso de construcción', news_2_date: 'hace 5 días',
-      news_3_title: 'Nuevo catálogo de modpacks', news_3_date: 'hace 1 semana',
+      shortcut_title: 'Acceso rápido',
+      card_display_title: 'Apariencia', card_window_title: 'Ventana',
+      settings_search_ph: 'Buscar ajustes …', settings_search_empty: 'Ningún ajuste coincide con esta búsqueda.',
+      settings_font_title: 'Fuente', settings_fontsize_title: 'Tamaño del texto',
+      settings_ownfont_title: 'Archivo de fuente propio', settings_ownfont_load: 'Elegir archivo …', settings_ownfont_clear: 'Quitar',
+      settings_motion_title: 'Menos movimiento',
+      settings_motion_hint: 'Desactiva las animaciones de tarjetas y botones. Sin ajuste propio sigue vigente “Reducir animaciones” de Windows.',
+      settings_font_reset: 'Restablecer fuente y tamaño',
 
       mods_title: 'Mods', mods_subtitle_tpl: 'Para la instancia „{name}" · {loader} {version}',
       mods_import: 'Añadir tu propio .jar', mods_search_placeholder: 'Buscar mods (p. ej. Sodium, Iris, JEI) …',
@@ -2200,10 +2587,14 @@
 
       stat_title: 'Aperçu', stat_customize: 'Personnaliser', stat_playtime: 'Temps de jeu', stat_worlds: 'Mondes', stat_mods_active: 'Mods actifs', stat_uptime: 'Disponibilité',
 
-      news_title: 'Actualités',
-      news_1_title: 'Mise à jour 1.21.4 disponible', news_1_date: 'il y a 2 jours',
-      news_2_title: 'Concours de construction', news_2_date: 'il y a 5 jours',
-      news_3_title: 'Nouveau catalogue de modpacks', news_3_date: 'il y a 1 semaine',
+      shortcut_title: 'Accès rapide',
+      card_display_title: 'Apparence', card_window_title: 'Fenêtre',
+      settings_search_ph: 'Rechercher dans les paramètres …', settings_search_empty: 'Aucun paramètre ne correspond à cette recherche.',
+      settings_font_title: 'Police', settings_fontsize_title: 'Taille du texte',
+      settings_ownfont_title: 'Fichier de police', settings_ownfont_load: 'Choisir un fichier …', settings_ownfont_clear: 'Retirer',
+      settings_motion_title: 'Moins d’animations',
+      settings_motion_hint: 'Désactive les animations des cartes et des boutons. Sans réglage propre, « Animer les fenêtres » de Windows continue de s’appliquer.',
+      settings_font_reset: 'Réinitialiser la police et la taille',
 
       mods_title: 'Mods', mods_subtitle_tpl: 'Pour l\'instance « {name} » · {loader} {version}',
       mods_import: 'Ajouter votre .jar', mods_search_placeholder: 'Rechercher des mods (ex. Sodium, Iris, JEI) …',
@@ -3655,7 +4046,19 @@
       updateEditorPreview(currentBounds, true);
       return;
     }
-    fillBoundsInputs(await window.launcher.windowControl.getBounds());
+    // try/catch ist hier kein Luxus: refreshWindowSettings() laeuft beim
+    // Start, und wenn der IPC-Kanal nicht antwortet (etwa weil in einem
+    // Test nur die Einstellungs-Kanaele registriert sind), gibt es sonst
+    // eine unbehandelte Zusage. Die landet als "Uncaught (in promise)" in
+    // der Konsole und sieht aus wie ein Fehler im Programm - dabei ist nur
+    // der Aufrufer schuld, der den Kanal nicht angeboten hat.
+    try {
+      fillBoundsInputs(await window.launcher.windowControl.getBounds());
+    } catch (err) {
+      settingsNote.textContent = t('settings_electron_only');
+      [winWidth, winHeight, winX, winY, applySizeBtn, applyPositionBtn, centerWinBtn, resetWinBtn]
+        .forEach(el => { if(el) el.disabled = true; });
+    }
   }
 
   // ---------- interactive edge-drag resizing ----------
@@ -3768,13 +4171,45 @@
   const GRID_COLS = 6;
   const GRID_ROWS = 4;
 
-  let layoutState = {
-    sidebar: { edge: 'left', thickness: 1 },
-    hero:    { col: 2, row: 1, colSpan: 3, rowSpan: 4 },
-    profile: { col: 5, row: 1, colSpan: 2, rowSpan: 1 },
-    stat:    { col: 5, row: 2, colSpan: 2, rowSpan: 2 },
-    news:    { col: 5, row: 4, colSpan: 2, rowSpan: 1 }
-  };
+  let layoutState = STANDARD_LAYOUT();
+
+  function STANDARD_LAYOUT(){
+    return {
+      sidebar: { edge: 'left', thickness: 1 },
+      hero:    { col: 2, row: 1, colSpan: 3, rowSpan: 4 },
+      profile: { col: 5, row: 1, colSpan: 2, rowSpan: 1 },
+      stat:    { col: 5, row: 2, colSpan: 2, rowSpan: 2 },
+      shortcut:{ col: 5, row: 4, colSpan: 2, rowSpan: 1 }
+    };
+  }
+
+  // Gespeichertes Layout uebernehmen, statt es blind zu uebernehmen.
+  //
+  // Zwei Gruende, beide nicht theoretisch:
+  //
+  // 1. Der fuenfte Block hiess bis vor kurzem "news" (die Neuigkeits-Karte).
+  //    Wer schon einmal gestartet hat, hat in settings.json ein Layout mit
+  //    "news" und OHNE "shortcut". Ohne diese Anpassung bekaeme
+  //    applyGridPlacement() fuer "shortcut" undefined und wuerfe beim ersten
+  //    syncLayout() - die Startseite waere dann kaputt statt nur ungewohnt.
+  //
+  // 2. Fehlt ein Block ganz, wird sein Standardplatz genommen statt
+  //    gerendert zu werden. Ein Layout, das beim Aendern einer Karte
+  //    ploetzlich den Hero versteckt, waere schlimmer als ein unperfektes
+  //    Layout.
+  function layoutUebernehmen(gespeichert){
+    const ziel = STANDARD_LAYOUT();
+    if(!gespeichert || typeof gespeichert !== 'object') return ziel;
+    if(gespeichert.news && !gespeichert.shortcut){
+      ziel.shortcut = { ...ziel.shortcut, ...gespeichert.news };
+    }
+    for(const id of ['sidebar', 'hero', 'profile', 'stat', 'shortcut']){
+      if(gespeichert[id] && typeof gespeichert[id] === 'object'){
+        ziel[id] = { ...ziel[id], ...gespeichert[id] };
+      }
+    }
+    return ziel;
+  }
 
   // Sidebar-Docking (edge+thickness) in ein normales {col,row,colSpan,rowSpan}
   // umrechnen, damit es dieselbe Kollisions-/Platzierungs-Logik nutzen kann
@@ -3825,10 +4260,10 @@
       : { col: 1, row: 1, colSpan: GRID_COLS - s.colSpan, rowSpan: GRID_ROWS };
   }
 
-  // els = { sidebar, hero, profile, stat, news, overlay? }
+  // els = { sidebar, hero, profile, stat, shortcut, overlay? }
   function applyLayoutToElements(els){
     if(els.sidebar) applyGridPlacement(els.sidebar, sidebarRect());
-    ['hero', 'profile', 'stat', 'news'].forEach(id => {
+    ['hero', 'profile', 'stat', 'shortcut'].forEach(id => {
       if(els[id]) applyGridPlacement(els[id], layoutState[id]);
     });
     if(els.overlay) applyGridPlacement(els.overlay, contentArea());
@@ -3845,7 +4280,7 @@
     hero: document.getElementById('heroCard'),
     profile: document.getElementById('profileCard'),
     stat: document.getElementById('statCard'),
-    news: document.getElementById('newsCard'),
+    shortcut: document.getElementById('shortcutCard'),
     overlay: document.getElementById('viewOverlay')
   };
   const GHOST_ELS = {
@@ -3853,14 +4288,14 @@
     hero: document.querySelector('.be-leaf[data-block="hero"]'),
     profile: document.querySelector('.be-leaf[data-block="profile"]'),
     stat: document.querySelector('.be-leaf[data-block="stat"]'),
-    news: document.querySelector('.be-leaf[data-block="news"]')
+    shortcut: document.querySelector('.be-leaf[data-block="shortcut"]')
   };
 
   function renderMiniPreview(){
     const mini = document.getElementById('beMini');
     if(!mini) return;
     mini.innerHTML = '';
-    ['sidebar', 'hero', 'profile', 'stat', 'news'].forEach(id => {
+    ['sidebar', 'hero', 'profile', 'stat', 'shortcut'].forEach(id => {
       const div = document.createElement('div');
       div.className = `be-mini-${id}`;
       applyGridPlacement(div, rectOf(id));
@@ -3872,6 +4307,28 @@
     applyLayoutToElements(REAL_ELS);
     applyLayoutToElements(GHOST_ELS);
     renderMiniPreview();
+    // Hier wird absichtlich NICHT gespeichert. syncLayout() laeuft beim
+    // Start und bei jedem einzelnen Mauspixel eines Zuges. Speichert man
+    // darin, ist zweierlei kaputt:
+    //
+    // 1. Beim Start schreibt der allererste Aufruf das Standardlayout in
+    //    die Datei, BEVOR das gespeicherte gelesen wird. Die eigene
+    //    Anordnung der Karten ist danach weg - und kommt nie wieder, weil
+    //    sie beim naechsten Start schon nicht mehr dasteht. Genau das ist
+    //    passiert: die Umbenennung von "news" nach "shortcut" hat in
+    //    test-einstellungen-fenster.js nicht gegriffen, und auf der Platte
+    //    stand danach nur noch das Standardlayout.
+    // 2. Ein Zug ueber drei Sekunden schreibt Hunderte Dateien.
+    //
+    // Gespeichert wird nur noch beim Loslassen der Maustaste, siehe
+    // layoutSpeichern() - dasselbe Prinzip wie beim Textgroessen-Schieber.
+  }
+
+  // Das EINZIGE, was das Karten-Layout auf die Platte schreibt. Bewusst
+  // getrennt von syncLayout(), damit man beim Lesen sieht: an einer
+  // Aenderung des Layouts sind zwei Aufrufe beteiligt, einer davon nur
+  // zum Anzeigen.
+  function layoutSpeichern(){
     if(window.launcher && window.launcher.settings){
       window.launcher.settings.set({ blockLayout: layoutState });
     }
@@ -3912,7 +4369,9 @@
       }
       function onUp(){
         leafEl.classList.remove('dragging');
-        syncLayout();
+        // syncLayout() hat beim Ziehen schon jedes Mal angewendet. Hier
+        // wird nur noch gespeichert, einmal fuer den ganzen Zug.
+        layoutSpeichern();
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
       }
@@ -3956,6 +4415,7 @@
         }
         function onUp(){
           edge.classList.remove('active');
+          layoutSpeichern();
           document.removeEventListener('mousemove', onMove);
           document.removeEventListener('mouseup', onUp);
         }
@@ -4037,6 +4497,7 @@
           layoutState[blockId] = lastValid;
         }
         syncLayout();
+        layoutSpeichern();
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
       }
@@ -4094,6 +4555,7 @@
         }
         function onUp(){
           edge.classList.remove('active');
+          layoutSpeichern();
           document.removeEventListener('mousemove', onMove);
           document.removeEventListener('mouseup', onUp);
         }
@@ -4125,15 +4587,21 @@
     if(e.target === layoutEditorOverlay) layoutEditorOverlay.hidden = true;
   });
 
-  // Initial anwenden (Standard-Layout) + gespeichertes Layout laden, falls vorhanden.
-  syncLayout();
+  // Das gespeicherte Layout wird ZUERST gelesen und danach genau einmal
+  // angewendet - nicht umgekehrt und nicht zweimal. Die umgekehrte Reihen-
+  // folge war ein stiller Datenverlust: der erste syncLayout()-Aufruf hat
+  // das Standardlayout in die Datei geschrieben, noch bevor das gespeicherte
+  // gelesen war, und damit jede eigene Anordnung der Karten ersetzt.
   if(window.launcher && window.launcher.settings){
     window.launcher.settings.get().then(s => {
-      if(s && s.blockLayout){
-        layoutState = s.blockLayout;
-        syncLayout();
-      }
-    }).catch(() => {});
+      if(s && s.blockLayout) layoutState = layoutUebernehmen(s.blockLayout);
+      syncLayout();
+    }).catch(() => {
+      syncLayout();
+    });
+  } else {
+    // Ohne Electron (Browser-Vorschau) gibt es nichts zu lesen.
+    syncLayout();
   }
 
 
@@ -4178,6 +4646,397 @@
       if(s && s.language && TRANSLATIONS[s.language]) setLanguage(s.language);
     }).catch(() => {});
   }
+  // ---------- Schnellzugriff auf der Startseite ----------
+  // Vier Knoepfe, die es vorher nur in der Seitenleiste gab. Sie rufen genau
+  // dieselbe Funktion auf wie die nav-items - und setzen dabei auch den
+  // aktiven Seitenleisten-Knopf, sonst leuchtet unten links weiter eine
+  // Ansicht als aktiv, die man gar nicht offen hat.
+  document.querySelectorAll('.shortcut-kachel[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      document.querySelectorAll('.nav-item[data-view]').forEach(el => el.classList.remove('active'));
+      const seitenLeiste = document.querySelector('.nav-item[data-view="' + view + '"]');
+      if(seitenLeiste) seitenLeiste.classList.add('active');
+      shellEl.setAttribute('data-view', view);
+      onViewChanged(view);
+    });
+  });
+
+  // ---------- Darstellung: Schrift, Textgroesse, Bewegung ----------
+  //
+  // Die drei Einstellungen liegen als eigene Schluessel in settings.json
+  // (schrift, schriftGroesse, wenigerBewegung) und NICHT in einem
+  // zusammenfassenden Objekt. Grund: der Schalter fuer die Bewegung soll
+  // nicht den Wert der Schrift mitschleppen, nur weil beide in derselben
+  // Karte stehen.
+  const SCHRIFTEN = [
+    { id: 'standard',   name: 'Standard (Segoe UI)',     stapel: '-apple-system, "SF Pro Display", "Segoe UI", Inter, sans-serif' },
+    { id: 'segoe',      name: 'Segoe UI',                 stapel: '"Segoe UI", system-ui, sans-serif' },
+    { id: 'calibri',    name: 'Calibri',                  stapel: 'Calibri, "Segoe UI", sans-serif' },
+    { id: 'arial',      name: 'Arial',                    stapel: 'Arial, Helvetica, sans-serif' },
+    { id: 'verdana',    name: 'Verdana',                  stapel: 'Verdana, Geneva, sans-serif' },
+    { id: 'georgia',    name: 'Georgia (Serif)',          stapel: 'Georgia, "Times New Roman", serif' },
+    { id: 'constantia', name: 'Constantia (Serif)',      stapel: 'Constantia, Georgia, serif' },
+    { id: 'consolas',   name: 'Consolas (Monospace)',     stapel: 'Consolas, "Cascadia Mono", ui-monospace, monospace' }
+  ];
+  const SCHRIFT_STANDARD = SCHRIFTEN[0].stapel;
+  const FS_MIN = 85, FS_MAX = 125, FS_STANDARD = 100;
+
+  // Der Name, unter dem eine selbst geladene Schrift in @font-face laeuft.
+  // Fest, weil es nur eine gibt - und weil ein Name aus der Datei in ein
+  // CSS-Regel geschrieben werden muesste, was eine echte Injection-Stelle
+  // waere. "LiquidEigeneSchrift" ist ein Bezeichner, kein Dateiname.
+  const EIGENE_FONT_NAME = 'LiquidEigeneSchrift';
+
+  // Zustand. Wird beim Start aus settings.json gefuellt.
+  let aktuelleSchrift = 'standard';
+  let eigeneFontDa = false;
+  let aktuelleGroesse = FS_STANDARD;
+  let wenigerBewegung = false;
+
+  // Das <style>-Element fuer die geladene Schriftdatei. Wird genau einmal
+  // erzeugt und danach nur noch per textContent gefuellt.
+  let eigeneFontStyle = null;
+  function eigeneFontStyleElement(){
+    if(eigeneFontStyle) return eigeneFontStyle;
+    if(!document.head) return null;
+    eigeneFontStyle = document.createElement('style');
+    eigeneFontStyle.id = 'llEigeneSchrift';
+    document.head.appendChild(eigeneFontStyle);
+    return eigeneFontStyle;
+  }
+
+  function eigeneFontSetzen(daten){
+    const el = eigeneFontStyleElement();
+    if(!el) return false;
+    if(!daten || !daten.dataUri){
+      el.textContent = '';
+      return false;
+    }
+    el.textContent = '@font-face{font-family:"' + EIGENE_FONT_NAME +
+      '";src:url(' + daten.dataUri + ');font-display:swap;}';
+    return true;
+  }
+
+  // Schreibt die Regel UND fragt den Browser, ob er die Bytes ueberhaupt
+  // als Schrift annimmt. Der zweite Teil ist nicht ueberfluessig: eine
+  // umbenannte .txt mit .ttf-Endung ist von der Endung her erlaubt, und
+  // @font-face verwirft sie lautlos. Ohne diese Pruefung stuende in den
+  // Einstellungen danach "Eigene Datei", waehrend die Oberflaeche still in
+  // der eingebauten Schrift steht - eine Auswahl, fuer die es nichts gibt.
+  async function eigeneFontLaden(daten){
+    if(!eigeneFontSetzen(daten)) return false;
+    if(!document.fonts || !document.fonts.load) return true;   // alter Browser
+    try {
+      const geladen = await document.fonts.load('12px "' + EIGENE_FONT_NAME + '"');
+      if(!geladen || geladen.length === 0){
+        eigeneFontSetzen(null);
+        return false;
+      }
+      return true;
+    } catch {
+      eigeneFontSetzen(null);
+      return false;
+    }
+  }
+
+  function schriftSuchen(id){
+    return SCHRIFTEN.find(s => s.id === id) || null;
+  }
+
+  // Den kompletten font-family-Stapel fuer die eingestellte Schrift bauen.
+  // Die eigene Datei kommt VOR die eingestellte Systemschrift: waere sie
+  // nicht geladen, wuerde die Auswahl trotzdem ihren Namen nennen und so
+  // aussehen, als gaebe es sie.
+  function schriftStapel(){
+    const gewaehlt = schriftSuchen(aktuelleSchrift);
+    const rest = gewaehlt ? gewaehlt.stapel : SCHRIFT_STANDARD;
+    return eigeneFontDa ? '"' + EIGENE_FONT_NAME + '", ' + rest : rest;
+  }
+
+  // --fs als Zahl, nicht als String mit "%". Die CSS-Regeln rechnen mit
+  // calc(Npx * var(--fs)); ein "115%" darin waere eine Zeitangabe und kein
+  // Faktor. Deshalb wird hier durch 100 geteilt.
+  function groesseAnwenden(){
+    document.documentElement.style.setProperty('--fs', String(aktuelleGroesse / 100));
+    const anzeige = document.getElementById('schriftGroesseWert');
+    if(anzeige) anzeige.textContent = aktuelleGroesse + ' %';
+  }
+
+  function schriftAnwenden(){
+    document.documentElement.style.setProperty('--font-ui', schriftStapel());
+    // Die Widget-Kacheln sind eigene Dokumente und erben nichts. Sie
+    // bekommen Schrift und Groessen-Faktor deshalb ueber die Brille.
+    if(window.WidgetHost && window.WidgetHost.themeSenden){
+      window.WidgetHost.themeSenden();
+    }
+  }
+
+  // ---------- Bewegung ----------
+  // Zwei Quellen: die Windows-Einstellung (prefers-reduced-motion) und der
+  // eigene Schalter. Der Schalter kann nur BEWEGUNG ABSCHALTEN, nicht
+  // einschalten - das ist Absicht. Wer in Windows "Animationen reduzieren"
+  // gesetzt hat, will das auch hier, und ein Schalter, der das umdreht,
+  // waere eine zweite, widersprechende Quelle fuer dieselbe Einstellung.
+  const systemMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function bewegungAus(){
+    return wenigerBewegung || systemMotion.matches;
+  }
+
+  // Wird weiter unten, zusammen mit der Hover-Verwaltung, belegt. Hier
+  // erst nur als leerer Platzhalter, damit bewegungAnwenden() ihn aufrufen
+  // kann, ohne dass es eine TDZ-Fehlerlaenge gibt: die Hover-Logik steht
+  // weiter unten im Skript und waere zum Zeitpunkt des ersten Aufrufs von
+  // bewegungAnwenden() noch nicht ausgewertet.
+  let hoverAufraeumen = function(){};
+
+  function bewegungAnwenden(){
+    document.documentElement.classList.toggle('ll-wenig-bewegung', bewegungAus());
+    const schalter = document.getElementById('bewegungSchalter');
+    if(schalter) schalter.setAttribute('aria-checked', wenigerBewegung ? 'true' : 'false');
+    // Wird die Bewegung gerade abgeschaltet, muss alles, was noch
+    // unterwegs ist, sofort weg. Sonst bewegt sich eine Karte weiter, auf
+    // der der Zeiger gerade steht, und man schaut auf eine Einstellung, die
+    // man gerade ausgeschaltet hat.
+    if(bewegungAus()) hoverAufraeumen();
+  }
+
+  // ---------- Verdrahtung ----------
+  const schriftSelect = document.getElementById('schriftSelect');
+  const schriftGroesse = document.getElementById('schriftGroesse');
+  const eigeneSchriftBtn = document.getElementById('eigeneSchriftBtn');
+  const eigeneSchriftWegBtn = document.getElementById('eigeneSchriftWegBtn');
+  const eigeneSchriftInfo = document.getElementById('eigeneSchriftInfo');
+  const bewegungSchalter = document.getElementById('bewegungSchalter');
+
+  function eigeneSchriftInfoSetzen(text, gut){
+    if(!eigeneSchriftInfo) return;
+    eigeneSchriftInfo.textContent = text || '';
+    eigeneSchriftInfo.className = 'settings-fehler' + (gut ? ' gut' : '');
+  }
+
+  function eigeneSchriftAnzeigen(){
+    if(eigeneSchriftWegBtn) eigeneSchriftWegBtn.hidden = !eigeneFontDa;
+  }
+
+  function schriftAuswahlFuellen(){
+    if(!schriftSelect) return;
+    schriftSelect.innerHTML = '';
+    // Die geladene Datei ist ein eigener Eintrag und steht oben, damit man
+    // sieht, dass sie aktiv ist. Sie ist KEIN eigener Schriftfamilienname,
+    // sondern ein Anzeigezustand: Datei zuerst, darunter die Standardfamilie.
+    const eigen = document.createElement('option');
+    eigen.value = 'eigene';
+    eigen.textContent = 'Eigene Datei (siehe unten)';
+    schriftSelect.appendChild(eigen);
+    SCHRIFTEN.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      schriftSelect.appendChild(opt);
+    });
+    schriftSelect.value = aktuelleSchrift;
+  }
+
+  function speichernDarstellung(){
+    if(!window.launcher || !window.launcher.settings) return;
+    window.launcher.settings.set({
+      schrift: aktuelleSchrift,
+      schriftGroesse: aktuelleGroesse
+    });
+  }
+
+  // Die geladene Datei holen und als @font-face einhaengen. Ohne Datei
+  // faellt der Zustand auf die eingestellte Systemschrift zurueck - die
+  // Auswahl "Eigene Datei" bleibt dann nicht stehen, sonst waere der
+  // Eintrag eine Behauptung, fuer die es keine Datei mehr gibt.
+  async function eigeneSchriftLaden(){
+    if(!window.launcher || !window.launcher.fonts) return false;
+    let daten = null;
+    try { daten = await window.launcher.fonts.read(); } catch { daten = null; }
+    eigeneFontDa = await eigeneFontLaden(daten);
+    if(eigeneFontDa){
+      eigeneSchriftInfoSetzen('Geladen: ' + daten.name, true);
+    } else {
+      if(daten && daten.name){
+        // Die Bytes waren da, taugen aber nicht. Das wird gesagt, statt es
+        // zu schlucken - sonst sucht man den Fehler in der falschen Ecke.
+        eigeneSchriftInfoSetzen('Die Datei ' + daten.name + ' laesst sich nicht als Schrift verwenden.', false);
+      } else {
+        eigeneSchriftInfoSetzen('');
+      }
+      // Egal ob die Datei fehlt oder unbrauchbar ist: die Auswahl
+      // "Eigene Datei" darf nicht stehen bleiben, sonst waere der Eintrag
+      // eine Behauptung, fuer die es keine Schrift gibt.
+      if(aktuelleSchrift === 'eigene') aktuelleSchrift = 'standard';
+    }
+    eigeneSchriftAnzeigen();
+    if(schriftSelect) schriftSelect.value = aktuelleSchrift;
+    schriftAnwenden();
+    return eigeneFontDa;
+  }
+
+  if(schriftSelect){
+    schriftSelect.addEventListener('change', () => {
+      aktuelleSchrift = schriftSelect.value;
+      schriftAnwenden();
+      speichernDarstellung();
+    });
+  }
+
+  if(schriftGroesse){
+    schriftGroesse.min = String(FS_MIN);
+    schriftGroesse.max = String(FS_MAX);
+    schriftGroesse.addEventListener('input', () => {
+      aktuelleGroesse = Number(schriftGroesse.value) || FS_STANDARD;
+      groesseAnwenden();
+      schriftAnwenden();
+    });
+    // Speichern erst beim Loslassen, nicht bei jedem Pixel. Sonst schreibt
+    // ein Zug am Schieber ein Dutzend settings.json-Dateien.
+    schriftGroesse.addEventListener('change', speichernDarstellung);
+  }
+
+  if(eigeneSchriftBtn){
+    eigeneSchriftBtn.addEventListener('click', async () => {
+      if(!window.launcher || !window.launcher.fonts){
+        eigeneSchriftInfoSetzen('Geht nur mit Electron.');
+        return;
+      }
+      eigeneSchriftInfoSetzen('…');
+      let r = null;
+      try {
+        r = await window.launcher.fonts.choose();
+      } catch (err) {
+        eigeneSchriftInfoSetzen('Fehlgeschlagen: ' + (err && err.message));
+        return;
+      }
+      if(!r) return;
+      if(!r.ok){
+        if(r.abgebrochen) eigeneSchriftInfoSetzen('');
+        else eigeneSchriftInfoSetzen(r.fehler || 'Konnte nicht geladen werden.');
+        return;
+      }
+      await eigeneSchriftLaden();
+    });
+  }
+
+  if(eigeneSchriftWegBtn){
+    eigeneSchriftWegBtn.addEventListener('click', async () => {
+      if(window.launcher && window.launcher.fonts){
+        try { await window.launcher.fonts.forget(); } catch { /* egal, lokal loeschbar */ }
+      }
+      eigeneFontDa = false;
+      if(aktuelleSchrift === 'eigene') aktuelleSchrift = 'standard';
+      eigeneFontSetzen(null);
+      eigeneSchriftAnzeigen();
+      eigeneSchriftInfoSetzen('');
+      if(schriftSelect) schriftSelect.value = aktuelleSchrift;
+      schriftAnwenden();
+      speichernDarstellung();
+    });
+  }
+
+  const darstellungZuruecksetzen = document.getElementById('darstellungZuruecksetzen');
+  if(darstellungZuruecksetzen){
+    darstellungZuruecksetzen.addEventListener('click', () => {
+      aktuelleSchrift = 'standard';
+      aktuelleGroesse = FS_STANDARD;
+      eigeneFontDa = false;
+      eigeneFontSetzen(null);
+      eigeneSchriftAnzeigen();
+      eigeneSchriftInfoSetzen('');
+      if(schriftSelect) schriftSelect.value = aktuelleSchrift;
+      if(schriftGroesse) schriftGroesse.value = String(FS_STANDARD);
+      groesseAnwenden();
+      schriftAnwenden();
+      speichernDarstellung();
+    });
+  }
+
+  if(bewegungSchalter){
+    bewegungSchalter.addEventListener('click', () => {
+      wenigerBewegung = !wenigerBewegung;
+      bewegungAnwenden();
+      if(window.launcher && window.launcher.settings){
+        window.launcher.settings.set({ wenigerBewegung: wenigerBewegung });
+      }
+    });
+  }
+
+  // ---------- Suchfeld in den Einstellungen ----------
+  //
+  // Gesucht wird nicht nur im sichtbaren Text, sondern in den Texten ALLER
+  // Sprachen. Wer auf Deutsch "schrift" eintippt, findet die Karte auch dann,
+  // wenn die Oberflaeche gerade auf Englisch steht - und umgekehrt. Ohne das
+  // waere die Suche nach einem Sprachwechsel blind, ohne dass man es ihr
+  // ansehen koennte.
+  const settingsSuche = document.getElementById('settingsSuche');
+  const settingsLeer = document.getElementById('settingsLeer');
+
+  function suchtextVon(karte){
+    const teile = [karte.textContent || '', (karte.dataset.suche || '').toLowerCase()];
+    karte.querySelectorAll('[data-i18n]').forEach(k => {
+      const schluessel = k.getAttribute('data-i18n');
+      for(const sprache of Object.keys(TRANSLATIONS)){
+        const wert = TRANSLATIONS[sprache][schluessel];
+        if(typeof wert === 'string') teile.push(wert);
+      }
+    });
+    return teile.join(' ').toLowerCase();
+  }
+
+  function settingsSuchen(){
+    if(!settingsSuche) return;
+    const q = settingsSuche.value.trim().toLowerCase();
+    const karten = document.querySelectorAll('#settingsRaster .settings-karte');
+    let sichtbar = 0;
+    karten.forEach(k => {
+      // Gecacht, weil der Text einmal ueber jede Uebersetzung laeuft und
+      // bei jedem Tastendruck wieder gebraucht wird.
+      if(k._llSuchtext === undefined) k._llSuchtext = suchtextVon(k);
+      const passt = !q || k._llSuchtext.indexOf(q) !== -1;
+      k.classList.toggle('unsichtbar', !passt);
+      if(passt) sichtbar++;
+    });
+    if(settingsLeer) settingsLeer.classList.toggle('an', sichtbar === 0);
+  }
+
+  if(settingsSuche){
+    settingsSuche.addEventListener('input', settingsSuchen);
+  }
+
+  // ---------- Start: gespeicherte Darstellung laden ----------
+  //
+  // Reihenfolge ist wichtig: erst die eigene Datei laden, DANN --font-ui
+  // setzen. Sonst gibt es einen Moment, in dem auf "eigene" gestellt ist,
+  // die @font-face-Regel aber noch fehlt - die Oberflaeche stuende dann in
+  // der falschen Schrift und spruenge zurueck.
+  schriftAuswahlFuellen();
+  if(schriftGroesse) schriftGroesse.value = String(FS_STANDARD);
+  bewegungAnwenden();
+  groesseAnwenden();
+
+  if(window.launcher && window.launcher.settings){
+    window.launcher.settings.get().then(async s => {
+      if(s){
+        if(s.schrift === 'eigene' || schriftSuchen(s.schrift)) aktuelleSchrift = s.schrift;
+        const g = Number(s.schriftGroesse);
+        if(Number.isFinite(g) && g >= FS_MIN && g <= FS_MAX) aktuelleGroesse = g;
+        wenigerBewegung = s.wenigerBewegung === true;
+      }
+      await eigeneSchriftLaden();
+      if(schriftSelect) schriftSelect.value = aktuelleSchrift;
+      if(schriftGroesse) schriftGroesse.value = String(aktuelleGroesse);
+      bewegungAnwenden();
+      groesseAnwenden();
+      schriftAnwenden();
+    }).catch(() => { schriftAnwenden(); });
+  } else {
+    // Ohne Electron (Browser-Vorschau) bleibt der Auslieferungsstand.
+    schriftAnwenden();
+  }
+
 
   // ---------- Hover-Magnet-Effekt ----------
   // Läuft per Event-Delegation auf document — funktioniert dadurch auch für
@@ -4193,7 +5052,7 @@
 
   document.addEventListener('mousemove', (e) => {
     const el = e.target.closest(MAGNETIC_SELECTOR);
-    if(!el) return;
+    if(!el || bewegungAus()) return;
     const rect = el.getBoundingClientRect();
     const dx = e.clientX - (rect.left + rect.width / 2);
     const dy = e.clientY - (rect.top + rect.height / 2);
@@ -4204,7 +5063,7 @@
 
   document.addEventListener('mouseover', (e) => {
     const el = e.target.closest(MAGNETIC_SELECTOR);
-    if(!el) return;
+    if(!el || bewegungAus()) return;
     el.style.transition = 'none'; // während des Hovers direkt folgen, ohne Nachlauf
   });
 
@@ -4215,6 +5074,12 @@
     el.style.transform = '';
   });
 
+  // Der Schalter "Weniger Bewegung" gilt fuer BEIDE Stufen. Frueher hat nur
+  // Stufe 2 auf prefers-reduced-motion geachtet, Stufe 1 bewegte die
+  // Buttons auch dann - die @media-Regel im CSS nahm ihr nur die
+  // Transition, nicht das Nachfuehren. Wer "Animationen reduzieren" an,
+  // sah also Schnipser statt eines ruhigen Fensters.
+
   // ---------- Hover-Bewegung fuer Karten und Zeilen (Stufe 2) ----------
   //
   // Stufe 1 oben sind Buttons und kleine Schalter: die folgen dem Zeiger
@@ -4223,14 +5088,25 @@
   // MAGNETIC_SELECTOR aufzunehmen wuerde sie genauso stark mitziehen lassen
   // wie die Buttons und das waere bei breiten Zeilen zu viel.
   //
+  // Neu dazugekommen: .hero und .profile-card. Die beiden sind auf der
+  // Startseite die einzigen grossen Karten ohne bewegliche Teile, weshalb
+  // sie ruhig mitlaufen koennen. Der Play-Knopf darin gehoert zu Stufe 1,
+  // und hoverTarget() gibt fuer ihn null zurueck - es wandert also nie
+  // beides gleichzeitig.
+  //
   // Bewusst NICHT genommen:
-  // - .news-card / .news-item: statische Newstexte ohne Klick-Handler. Ein
-  //   wandernde Textblock sieht nach kaputtem Layout aus, nicht nach Effekt.
   // - .stat-card: das ist der Container UEBER der Kachelreihe. Naeme
-  //   .stat-card statt .stat-tile, wanderte die ganze Karte samt Titel mit.
-  // - .settings-row: Beschriftungszeilen ohne eigenen Klick-Handler.
+  //   .stat-card statt .stat-tile, wanderte die ganze Karte samt Titel mit
+  //   UND die Kacheln darin in dieselbe Richtung - das sieht sofort kaputt
+  //   aus. Sie bekommt deshalb nur Optik aus dem CSS (siehe
+  //   .stat-card:hover), keine Bewegung.
+  // - .shortcut-card: traegt vier Knoepfe, die alle zu Stufe 1 gehoeren.
+  //   Ihre Optik kommt aus dem CSS, ihre Bewegung nicht.
+  // - .settings-karte: steht in der Einstellungen, nicht auf der
+  //   Startseite, und hat selbst keine Translation im CSS - die Karte
+  //   hebt sich beim Ueberfahren bereits selber an.
   // - .we-card / .clientid-row: haben keine CSS-Regel, Geometrie unbekannt.
-  const HOVER_SELECTOR = '.world-card, .mod-row, .srv-row, .stat-tile, .lang-row';
+  const HOVER_SELECTOR = '.world-card, .mod-row, .srv-row, .stat-tile, .lang-row, .hero, .profile-card';
   const HOVER_STRENGTH = 0.16;
   const HOVER_MAX = 5; // px
   const HOVER_SPRING = 'transform .5s cubic-bezier(.34,1.56,.64,1)';
@@ -4243,7 +5119,18 @@
   // .srv-row waere das deutlich sichtbar, bei den kleinen Buttons der
   // Stufe 1 faellt es nicht auf, weil sie 10px sowieso nicht weit kommen.
   const hoverState = new WeakMap();
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  // Eine WeakMap laesst sich nicht durchlaufen - fuer das Aufraeumen in
+  // hoverAufraeumen() braucht man aber genau das. Desfuehr steht hier
+  // zusaetzlich ein Set mit genau den Karten, die gerade wirklich unter dem
+  // Zeiger liegen. Das ist winzig (die Zahl entspricht der Zahl sichtbarer
+  // Zeiger) und wird beim mouseout wieder geleert, also haelt es keine
+  // Karten fest, die niemand mehr sieht.
+  const hoverAktiv = new Set();
+  // Frueher stand hier eine eigene matchMedia-Abfrage. Jetzt kommt
+  // bewegungAus() aus dem Abschnitt "Darstellung": das fragt denselben
+  // Systemwert ab UND den eigenen Schalter. Zwei unabhaengige Abfragen
+  // derselben Sache waeren genau die Art Doppelbuch, die beim naechsten
+  // Aendern auseinanderlaeuft.
 
   // Stufe 1 gewinnt, wenn beides passt. Sonst wuerde eine Karte mit Button
   // darin zweimal wandern - einmal als Karte, einmal als Button - und das
@@ -4257,16 +5144,25 @@
 
   document.addEventListener('mouseover', (e) => {
     const el = hoverTarget(e);
-    if (!el || reduceMotion.matches) return;
+    if (!el || bewegungAus()) return;
     const prev = hoverState.get(el);
     if (prev && prev.timer) { clearTimeout(prev.timer); prev.timer = null; }
     hoverState.set(el, { rect: el.getBoundingClientRect(), timer: null });
+    hoverAktiv.add(el);
     el.style.transition = 'none';
   });
 
   document.addEventListener('mousemove', (e) => {
     const el = hoverTarget(e);
     if (!el) return;
+    // Auch hier pruefen, nicht nur beim mouseover. Der Zustand in
+    // hoverState ueberlebt das Verlassen einer Karte absichtlich 520ms
+    // lang, damit der Ruecklauf weich aussieht. Schaltet man in diesem
+    // Fenster den Schalter "Weniger Bewegung" um - oder faehrt der Zeiger
+    // einfach weiter, ohne die Karte zu verlassen -, steht die Karte noch
+    // in hoverState und wuerde sich trotz Abschaltung weiter bewegen.
+    // Genau das ist in test-einstellungen-fenster.js aufgefallen.
+    if (bewegungAus()) return;
     const st = hoverState.get(el);
     if (!st) return;
     const dx = e.clientX - (st.rect.left + st.rect.width / 2);
@@ -4293,9 +5189,38 @@
         el.style.transition = '';
         el.style.transform = '';
         hoverState.delete(el);
+        hoverAktiv.delete(el);
       }
     }, 520);
   });
+
+  // Alles aufraeumen, was die beiden Stufen gerade bewegt haben: die
+  // gespeicherten Zustaende, die gesetzten Inline-Transforms und die noch
+  // laufenden Ruecklauf-Timer. Wird aufgerufen, sobald "Weniger Bewegung"
+  // greift - damit man nicht auf eine Einstellung schaut, die man gerade
+  // ausgeschaltet hat, waehrend die Karte unter dem Zeiger weiterwandert.
+  //
+  // Ueber hoverAktiv und nicht ueber hoverState: eine WeakMap hat weder
+  // for..of noch clear(). Der erste Versuch mit
+  // "for(const [el, st] of hoverState)" hat beim Anklicken des Schalters
+  // jedes Mal "TypeError: hoverState is not iterable" geworfen und dabei
+  // den Klick-Handler abgebrochen - der Schalter sah aus wie gespeichert und
+  // war es nicht.
+  hoverAufraeumen = function(){
+    for(const el of hoverAktiv){
+      const st = hoverState.get(el);
+      if(st && st.timer) clearTimeout(st.timer);
+      el.style.transition = '';
+      el.style.transform = '';
+    }
+    hoverAktiv.clear();
+    // Die Knopfenden Stufe 1 stehen nicht in hoverState, sie tragen ihren
+    // Zustand nur im Inline-Style.
+    document.querySelectorAll(MAGNETIC_SELECTOR).forEach(el => {
+      el.style.transition = '';
+      el.style.transform = '';
+    });
+  };
 
   // ---------- Server-Panel ----------
   let mockServers = {}; // nur für die Browser-Vorschau ohne Electron: { instanceId: [...] }

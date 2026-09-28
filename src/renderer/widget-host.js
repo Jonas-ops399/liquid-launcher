@@ -79,21 +79,56 @@
   // Die Widgets laufen in einem eigenen Dokument und kennen die CSS-Variablen
   // des Launchers nicht. Sie bekommen sie deshalb als --ll-*-Variablen
   // geschickt, und benutzen sie mit einem Fallback, falls gar nichts kommt.
-  function themeFarben() {
-    const standard = {
-      '--ll-text-hi': '#fff',
-      '--ll-text-lo': 'rgba(255,255,255,.62)',
-      '--ll-accent': '#ffb86b'
-    };
-    if (!window.getComputedStyle) return standard;
+  //
+  // Die Schrift gehoert aus demselben Grund hierher und nicht nur in das
+  // Hauptfenster: eine Kachel ist ein eigenes Dokument. Schriftwaechter,
+  // Zeilenabstaende, Seitenraender und Rahmen werden ueber die Dokumentgrenze
+  // hinweg NICHT geerbt - eine Kachel erbt von gar nichts ausser dem, was
+  // :root des iframe selbst vorgibt. Ohne diese Zeile bliebe die Uhr in der
+  // Standardschrift stehen, waehrend der ganze Rest des Launchers in der
+  // eingestellten Schrift stuende.
+  //
+  // Die eingestellte Schrift ist ein kompletter font-family-Stapel, kein
+  // Familienname - siehe --font-ui in index.html. Deshalb wird sie unter dem
+  // Namen --ll-font durchgereicht und von den Widgets mit
+  // font-family: var(--ll-font, inherit) benutzt.
+  //
+  // Dasselbe gilt fuer --ll-fs: der Textgroessen-Faktor. Ohne ihn waere die
+  // Uhr bei 125% kleiner als der Rest des Launchers, obwohl der Faktor
+  // ausdruecklich fuer "alles" gedacht ist.
+  const THEME_STANDARD = {
+    '--ll-text-hi': '#fff',
+    '--ll-text-lo': 'rgba(255,255,255,.62)',
+    '--ll-accent': '#ffb86b',
+    '--ll-fs': '1'
+  };
+
+  // Welche CSS-Variable des Launchers als welche --ll-*-Variable weitergeht.
+  // Als Liste, nicht als drei Zeilen: sonst wird beim Erweitern leicht eine
+  // Farbe nur im Fenster geaendert und nicht bei den Kacheln - genau die
+  // Art stiller Inkonsistenz, die man auf einem Bild nicht sieht.
+  const THEME_QUELLE = [
+    ['--text-hi', '--ll-text-hi'],
+    ['--text-lo', '--ll-text-lo'],
+    ['--accent', '--ll-accent'],
+    ['--font-ui', '--ll-font'],
+    ['--fs', '--ll-fs']
+  ];
+
+  function themeStile() {
+    const raus = Object.assign({}, THEME_STANDARD);
+    if (!window.getComputedStyle) return raus;
     const stil = getComputedStyle(document.documentElement);
-    const raus = {};
-    for (const name of ['--text-hi', '--text-lo', '--accent']) {
-      const wert = stil.getPropertyValue(name);
-      if (wert && wert.trim()) raus['--ll-' + name.slice(2)] = wert.trim();
+    for (const [von, nach] of THEME_QUELLE) {
+      const wert = stil.getPropertyValue(von);
+      if (wert && wert.trim()) raus[nach] = wert.trim();
     }
-    return Object.assign(standard, raus);
+    return raus;
   }
+
+  // Alter Name, noch benutzt (index.html ruft window.WidgetHost.themeFarben()
+  // nicht, aber aeltere Widgets und die README beschreiben die Nachricht so).
+  const themeFarben = themeStile;
 
   // ---------------------------------------------------------------------
   // Nachrichten an ein einzelnes Widget
@@ -450,13 +485,14 @@
   // ---------------------------------------------------------------------
   // fuer index.html und die Tests
   // ---------------------------------------------------------------------
-  // Die aktuellen Farben an alle Kacheln schicken. Wird nach einem Wechsel
-  // des Farbschemas aufgerufen, sonst behaelt eine bereits offene Kachel die
-  // Farben, mit denen sie geladen wurde.
+  // Die aktuellen Farben und die eingestellte Schrift an alle Kacheln
+  // schicken. Wird nach einem Wechsel des Farbschemas oder der Schrift
+  // aufgerufen, sonst behaelt eine bereits offene Kachel die Werte, mit denen
+  // sie geladen wurde.
   function themeSenden() {
-    const farben = themeFarben();
-    sendeAnAlle('theme', { daten: farben });
-    return farben;
+    const stile = themeStile();
+    sendeAnAlle('theme', { daten: stile });
+    return stile;
   }
 
   window.WidgetHost = {
@@ -468,6 +504,7 @@
     bearbeitenSchalten,
     datenLaden,
     instanzSetzen,
+    themeStile,
     themeFarben,
     themeSenden,
     // Nur zum Nachsehen in der Konsole

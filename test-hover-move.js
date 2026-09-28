@@ -43,6 +43,14 @@ const magneticDecl = extract(
   /const MAGNETIC_SELECTOR =[^;]+;/,
   'MAGNETIC_SELECTOR');
 
+// Ab hier ruft BEIDE Stufen bewegungAus() statt selbst matchMedia
+// auszuwerten. Die Funktion wird deshalb mit in die Sandbox geladen - ein
+// Test, der sich eine eigene "reduced-motion"-Abfrage baut, prueft nicht das,
+// was im Fenster laeuft.
+const bewegungDecl = extract(
+  /const systemMotion = window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\);[\s\S]*?\n  \}\n/,
+  'bewegungAus');
+
 // Stufe 1 wird MIT geladen. Ohne sie koennte der Test nicht feststellen, ob
 // ein Button in einer Karte sich einmal oder zweimal bewegt - und genau das ist
 // die Fehlerart, die man beim reinen Betrachten des Codes uebersieht.
@@ -156,10 +164,17 @@ sandbox.globalThis = sandbox;
 
 vm.createContext(sandbox);
 vm.runInContext(
-  magneticDecl + '\n' + magneticTier1 + '\n' + hoverBody,
+  'let wenigerBewegung = false;\n' +
+  bewegungDecl + '\n' + magneticDecl + '\n' + magneticTier1 + '\n' + hoverBody,
   sandbox,
   { filename: 'hover-code.js' }
 );
+
+// Der eigene Schalter "Weniger Bewegung". Getrennt vom Systemwert, damit
+// beide Quellen einzeln pruefbar sind.
+function schalterAn(an) {
+  vm.runInContext('wenigerBewegung = ' + (an ? 'true' : 'false') + ';', sandbox);
+}
 
 function fire(type, target, relatedTarget) {
   for (const fn of (listeners[type] || [])) {
@@ -227,6 +242,16 @@ group('1. Der Selektor trifft die Elemente, die es wirklich gibt');
   k.rect = { left: 0, top: 0, width: 120, height: 80 };
   hover(ziel, 110, 70);
   ok(tx(k) !== null, 'Stat-Kachel bewegt sich');
+}
+// Die zwei grossen Karten, die es vorher gar nicht gab. Ohne eigene
+// Bewegung im Inneren duerfen sie mitlaufen.
+for (const [name, sel] of [['Hero-Karte', '.hero'], ['Profilkarte', '.profile-card']]) {
+  const ziel = makeChain(['div' + sel]);
+  const k = ziel.closest(sel);
+  k.rect = { left: 0, top: 0, width: 600, height: 200 };
+  hover(ziel, 580, 190);
+  ok(tx(k) !== null, name + ' bewegt sich beim Ueberfahren',
+     'Inline-transform war: ' + JSON.stringify(k.style.transform));
 }
 
 // ---------------------------------------------------------------------
@@ -361,12 +386,21 @@ group('5. Zuruecksetzen und Aufraeumen');
 // ---------------------------------------------------------------------
 group('6. Bewusst ausgeschlossen');
 // ---------------------------------------------------------------------
+// Wichtig: "Karte sichtbar reagiert" und "Karte bewegt sich" sind zwei
+// verschiedene Fragen. Die Stat- und die Schnellzugriff-Karte reagieren
+// sichtbar (Rahmen, Flaeche) - ueber die :hover-Regeln im CSS. Bewegen
+// duerfen sie sich trotzdem nicht: in der Stat-Karte sitzen die
+// Widget-Kacheln, die selbst wandern, und die Schnellzugriff-Karte
+// traegt vier Knoepfe aus Stufe 1. Beide wuerden sonst zweimal
+// gleichzeitig nachlaufen.
 {
   for (const [name, sel] of [
-    ['Newstext', 'div.news-item'],
-    ['Nachrichten-Karte', 'div.news-card'],
     ['Stat-Karte (Container)', 'div.stat-card'],
-    ['Einstellungszeile', 'div.settings-row'],
+    ['Schnellzugriff-Karte', 'div.shortcut-card'],
+    ['Einstellungskarte', 'div.settings-karte'],
+    ['Glasflaeche (allgemein)', 'div.glass'],
+    ['Welt-Editor-Karte', 'div.we-card'],
+    ['Startoptionen-Karte', 'div.opts-card'],
   ]) {
     const k = make(sel);
     k.rect = { left: 0, top: 0, width: 400, height: 60 };
@@ -375,24 +409,54 @@ group('6. Bewusst ausgeschlossen');
       fn({ target: k, relatedTarget: null, clientX: 380, clientY: 5 });
     }
     ok(k.style.transform === undefined || k.style.transform === '',
-       name + ' bewegt sich NICHT (statischer Inhalt)',
+       name + ' bewegt sich NICHT (traegt bewegliche Teile oder steht in den Einstellungen)',
        'hat: ' + k.style.transform);
   }
 }
 
 // ---------------------------------------------------------------------
-group('7. reduced-motion wird respektiert');
+group('7. "Weniger Bewegung" wird respektiert - beide Quellen, beide Stufen');
 // ---------------------------------------------------------------------
+// Zwei unabhaengige Quellen, die beide nur abschalten duerfen:
+//   - die Windows-Einstellung (prefers-reduced-motion)
+//   - der eigene Schalter in den Einstellungen
+// Frueher hat nur Stufe 2 auf die Windows-Einstellung geachtet; Stufe 1 lief
+// weiter und sprang statt zu gleiten, weil die @media-Regel im CSS nur die
+// Transition nahm, nicht das Nachfuehren.
 {
-  reduceMotion = true;
-  const k = make('div.world-card');
-  k.rect = { left: 0, top: 0, width: 100, height: 40 };
-  fire('mouseover', k, null);
-  for (const fn of listeners.mousemove) {
-    fn({ target: k, relatedTarget: null, clientX: 90, clientY: 5 });
+  function bewegeStufe2() {
+    const k = make('div.world-card');
+    k.rect = { left: 0, top: 0, width: 100, height: 40 };
+    hover(k, 90, 5);
+    return tx(k) !== null;
   }
-  ok(k.style.transform === undefined || k.style.transform === '',
-     'Bei reduzierter Bewegung bleibt alles still');
+  function bewegeStufe1() {
+    const b = make('button');
+    b.rect = { left: 0, top: 0, width: 100, height: 40 };
+    hover(b, 90, 5);
+    return b.style.transform !== undefined && b.style.transform !== '';
+  }
+
+  reduceMotion = true;
+  ok(!bewegeStufe2(), 'Windows-Einstellung: Karten bleiben still');
+  ok(!bewegeStufe1(), 'Windows-Einstellung: Knöpfe bleiben ebenfalls still');
+  reduceMotion = false;
+
+  ok(bewegeStufe2() && bewegeStufe1(),
+     'Ohne Einstellung: beide Stufen laufen wieder');
+
+  schalterAn(true);
+  ok(!bewegeStufe2(), 'Eigener Schalter: Karten bleiben still');
+  ok(!bewegeStufe1(), 'Eigener Schalter: Knöpfe bleiben ebenfalls still');
+  schalterAn(false);
+  ok(bewegeStufe2() && bewegeStufe1(), 'Schalter aus: beide Stufen laufen wieder');
+
+  // Der Schalter darf die Windows-Einstellung nicht aufheben. Wer in Windows
+  // "Animationen reduzieren" gesetzt hat, will das auch hier.
+  reduceMotion = true;
+  schalterAn(false);
+  ok(!bewegeStufe2() && !bewegeStufe1(),
+     'Schalter AUS hebt die Windows-Einstellung NICHT auf (nur abschalten, nicht einschalten)');
   reduceMotion = false;
 }
 

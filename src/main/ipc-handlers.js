@@ -15,7 +15,7 @@
 //   Die Reject-Meldung ist absichtlich sprechend, damit im UI klar sichtbar
 //   wird, was noch fehlt, statt stumm mit leeren Daten zu antworten.
 
-const { ipcMain, dialog, app, safeStorage, shell } = require('electron');
+const { ipcMain, dialog, app, safeStorage, shell, BrowserWindow } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -1108,6 +1108,150 @@ function registerIpcHandlers() {
     const meldung = shell.openPath(WIDGET_BENUTZER);
     if (meldung) return { ok: false, fehler: meldung };
     return { ok: true, ordner: WIDGET_BENUTZER };
+  });
+
+  // =================================================================
+  // Eigene Schriftdatei
+  // =================================================================
+  // Zugriff auf das Dateisystem gehoert in den Haupt-Prozess: der Renderer
+  // laeuft mit contextIsolation + sandbox und hat gar kein fs. Er bekommt
+  // deshalb nur die Bytes als Data-URI und bindet sie ueber @font-face ein.
+  //
+  // Warum Data-URI und nicht ein Pfad: index.html wird per loadFile() also
+  // ueber file:// geladen. Eine Webseite, die selbst file:// ist, darf eine
+  // andere Datei per CSS nachladen nicht ohne Weiteres - dafuer braeuchte es
+  // webSecurity=false, und das ist an genau den Stellen, die die Widget-Sandbox
+  // ausmachen, aus. Eine Data-URI umgeht das nicht, sondern braucht es gar nicht.
+  //
+  // Es wird bewusst nur EINE eigene Schrift gehalten. Mehrere wuerden nichts
+  // bringen, weil die Auswahl eine einzige Stelle hat - und der Renderer
+  // bekaeme sonst bei jedem Start ein Megabyte Schrift ueber IPC.
+  const SCHRIFT_ORDNER = path.join(app.getPath('userData'), 'schrift');
+  const SCHRIFT_MAX_BYTES = 4 * 1024 * 1024;
+  // Nicht nur als Anzeigetexte, sondern ueber die Dateiendung geprueft. Eine
+  // umbenannte .exe ist damit ausgeschlossen; eine umbenannte .txt, die keine
+  // Schrift ist, dagegen nicht. Letzteres ist unkritisch: @font-face ignoriert
+  // sie lautlos und die Oberflaeche faellt auf die eingebaute Schrift zurueck.
+  const SCHRIFT_ENDUNGEN = {
+    '.ttf': 'font/ttf',
+    '.otf': 'font/otf',
+    '.ttc': 'font/collection',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2'
+  };
+
+  function schriftEndung(name) {
+    return String(name || '').toLowerCase().match(/\.[a-z0-9]+$/);
+  }
+
+  function schriftMeldung(ok, zusatz) {
+    return Object.assign({ ok: !!ok }, zusatz || {});
+  }
+
+  // Den tatsaechlich benutzten Dateinamen im Schrift-Ordner. settings.json
+  // speichert nur diesen Namen, nicht die Bytes - sonst stuende ein ganzes
+  // Megabyte Schrift in einer Konfigurationsdatei.
+  function schriftDatei() {
+    const name = settingsStore.eigeneSchrift;
+    if (typeof name !== 'string' || !name) return null;
+    // Kein Pfad aus settings.json uebernehmen, sondern den Namen selbst als
+    // Dateinamen in unserem eigenen Ordner verwenden. Sonst koennte ein
+    // manipuliertes settings.json hier "../../programme/x" einschleusen.
+    const sicher = path.basename(name);
+    if (sicher !== name) return null;
+    if (!Object.prototype.hasOwnProperty.call(SCHRIFT_ENDUNGEN, schriftEndung(sicher))) return null;
+    return path.join(SCHRIFT_ORDNER, sicher);
+  }
+
+  ipcMain.handle('schriften:waehlen', async (event) => {
+    const eltern = BrowserWindow.fromWebContents(event.sender);
+    const antwort = eltern
+      ? await dialog.showOpenDialog(eltern, {
+          title: 'Schriftdatei auswaehlen',
+          properties: ['openFile'],
+          filters: [
+            { name: 'Schriften', extensions: ['ttf', 'otf', 'ttc', 'woff', 'woff2'] },
+            { name: 'Alle Dateien', extensions: ['*'] }
+          ]
+        })
+      : await dialog.showOpenDialog({
+          title: 'Schriftdatei auswaehlen',
+          properties: ['openFile'],
+          filters: [{ name: 'Schriften', extensions: ['ttf', 'otf', 'ttc', 'woff', 'woff2'] }]
+        });
+
+    if (antwort.canceled || !antwort.filePaths.length) return schriftMeldung(false, { abgebrochen: true });
+    const quelle = antwort.filePaths[0];
+
+    let groesse = 0;
+    try {
+      groesse = fs.statSync(quelle).size;
+    } catch (err) {
+      return schriftMeldung(false, { fehler: 'Datei nicht lesbar: ' + (err && err.message) });
+    }
+    if (groesse === 0) return schriftMeldung(false, { fehler: 'Die Datei ist leer.' });
+    if (groesse > SCHRIFT_MAX_BYTES) {
+      return schriftMeldung(false, {
+        fehler: 'Zu gross: ' + Math.round(groesse / 1024) + ' KB, erlaubt sind ' +
+                Math.round(SCHRIFT_MAX_BYTES / 1024) + ' KB.'
+      });
+    }
+
+    const endung = schriftEndung(quelle);
+    if (!endung || !Object.prototype.hasOwnProperty.call(SCHRIFT_ENDUNGEN, endung)) {
+      return schriftMeldung(false, { fehler: 'Nur .ttf, .otf, .ttc, .woff und .woff2 werden akzeptiert.' });
+    }
+
+    const ziel = path.join(SCHRIFT_ORDNER, 'eigene' + endung);
+    try {
+      fs.mkdirSync(SCHRIFT_ORDNER, { recursive: true });
+      // Erst die alte Datei wegräumen, damit nicht "eigene.ttf" UND
+      // "eigene.otf" nebeneinander liegen und beim naechsten Start eine
+      // davon zur Aussage wird, die gerade nicht in settings.json steht.
+      for (const alt of fs.readdirSync(SCHRIFT_ORDNER)) {
+        if (alt.startsWith('eigene') && alt !== path.basename(ziel)) {
+          try { fs.unlinkSync(path.join(SCHRIFT_ORDNER, alt)); } catch { /* egal */ }
+        }
+      }
+      fs.copyFileSync(quelle, ziel);
+    } catch (err) {
+      return schriftMeldung(false, { fehler: 'Kopieren fehlgeschlagen: ' + (err && err.message) });
+    }
+
+    const name = path.basename(ziel);
+    settingsStore = { ...settingsStore, eigeneSchrift: name };
+    saveSettingsToDisk(settingsStore);
+    return schriftMeldung(true, { name: name, groesse: groesse });
+  });
+
+  // Die Bytes als Data-URI. Nur auf Abruf und nur fuer die tatsaechlich
+  // eingestellte Datei - nicht fuer alles, was im Ordner liegt.
+  ipcMain.handle('schriften:lesen', async () => {
+    const datei = schriftDatei();
+    if (!datei) return null;
+    let inhalt;
+    try {
+      inhalt = fs.readFileSync(datei);
+    } catch {
+      return null; // Datei weg, Ordner geloescht: die UI faellt zurueck
+    }
+    if (inhalt.length === 0 || inhalt.length > SCHRIFT_MAX_BYTES) return null;
+    return {
+      name: path.basename(datei),
+      mime: SCHRIFT_ENDUNGEN[schriftEndung(datei)],
+      dataUri: 'data:' + SCHRIFT_ENDUNGEN[schriftEndung(datei)] + ';base64,' + inhalt.toString('base64')
+    };
+  });
+
+  ipcMain.handle('schriften:vergessen', async () => {
+    const datei = schriftDatei();
+    if (datei) {
+      try { fs.unlinkSync(datei); } catch { /* schon weg ist kein Fehler */ }
+    }
+    settingsStore = { ...settingsStore };
+    delete settingsStore.eigeneSchrift;
+    saveSettingsToDisk(settingsStore);
+    return schriftMeldung(true);
   });
 }
 

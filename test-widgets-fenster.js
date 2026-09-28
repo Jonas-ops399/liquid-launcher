@@ -107,8 +107,15 @@ const PROBE_WIDGET = `<!doctype html>
       befund.datenSchluessel = Object.keys(s).sort().join(',');
       var alsText = JSON.stringify(s);
       befund.datenVolltext = alsText;
+      // Nach einem Muster, nicht nach einer festen Client-ID. Eine
+      // Client-ID ist eine GUID - und es darf in den Daten gar keine
+      // stehen, nicht nur nicht die gerade gueltige. So bleibt die
+      // Pruefung gueltig, wenn sich die Client-ID einmal aendert, und
+      // zugleich steht in diesem oeffentlichen Repository keine echte.
       befund.datenEnthaeltToken =
-        /token/i.test(alsText) || /df3c3ec3/i.test(alsText) || /AppData/i.test(alsText);
+        /token/i.test(alsText) ||
+        /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(alsText) ||
+        /AppData/i.test(alsText);
     }
   });
 

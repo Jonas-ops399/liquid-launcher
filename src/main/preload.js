@@ -116,5 +116,17 @@ contextBridge.exposeInMainWorld('launcher', {
     html: invoke('widgets:html'),            // HTML eines Widgets
     daten: invoke('widgets:daten'),          // der gefilterte Datenkoffer
     openFolder: invoke('widgets:openFolder') // Ordner fuer eigene Widgets
+  },
+  // Eigene Schriftdatei fuer die Oberflaeche.
+  //
+  // `waehlen` oeffnet den nativen Dateidialog und kopiert die Datei nach
+  // %APPDATA%\Liquid Launcher\schrift\. `lesen` liefert die Bytes als
+  // Data-URI fuer @font-face. Der Renderer bekommt bewusst keinen Pfad und
+  // kein fs: er kann die Datei weder selbst suchen noch selbst lesen, nur
+  // anzeigen.
+  fonts: {
+    choose: invoke('schriften:waehlen'),
+    read: invoke('schriften:lesen'),
+    forget: invoke('schriften:vergessen')
   }
 });

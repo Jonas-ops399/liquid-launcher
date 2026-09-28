@@ -248,7 +248,7 @@ group('7. Positivliste: was ein Widget sehen darf');
     fs: 'fs-modul',
     require: 'require-funktion',
     child_process: 'kindprozesse',
-    settingsStore: { clientId: 'df3c3ec3-...' }
+    settingsStore: { clientId: '11111111-2222-3333-4444-555555555555' }
   };
   const raus = W.filtereDatenFuerWidget(koffer);
 

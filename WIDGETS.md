@@ -80,23 +80,54 @@ lassen sich die Kacheln ziehen und über das `×` entfernen.
 
 ## Welche Farben das Widget bekommt
 
-Der Launcher schickt dir drei CSS-Variablen, damit die Kachel zum Theme passt:
+Der Launcher schickt dir fünf CSS-Variablen, damit die Kachel zum Theme passt:
 
 | Variable | Bedeutung |
 |---|---|
 | `--ll-text-hi` | helle Schrift, für den Hauptwert |
 | `--ll-text-lo` | gedämpfte Schrift, für Beschriftung |
 | `--ll-accent` | Akzentfarbe |
+| `--ll-font` | Schriftstapel der Oberfläche |
+| `--ll-fs` | Textgrößenfaktor, `1` bis `1.25` |
 
 Benutze sie mit einem Fallback, falls nichts kommt:
 
 ```css
-.wert { color: var(--ll-text-hi, #fff); }
-.lbl  { color: var(--ll-text-lo, rgba(255,255,255,.62)); }
+.wert {
+  color: var(--ll-text-hi, #fff);
+  font: 600 26px/1.1 var(--ll-font, system-ui, sans-serif);
+}
+.lbl {
+  color: var(--ll-text-lo, rgba(255,255,255,.62));
+  font: 500 12px/1.2 var(--ll-font, system-ui, sans-serif);
+}
 ```
 
 Die Farben kommen beim Laden der Kachel und bei jedem Wechsel des
 Farbschemas, damit eine offene Kachel nicht die alten Farben behält.
+
+### Warum `--ll-font` und `--ll-fs` mitgeschickt werden
+
+Ein `iframe` erbt **nichts** aus dem Dokument, in das es eingehängt ist —
+weder Schrift, noch Größe, noch geerbte Eigenschaften. Ein Widget ohne diese
+beiden Variablen sähe deshalb in Segoe UI 12 px dastehen, während die
+Oberfläche in Georgia 130 % läuft, und der Unterschied fiele sofort auf.
+
+`--ll-fs` ist der Faktor aus dem Regler *Textgröße* (85 bis 125 Prozent).
+Multipliziere deine eigenen Größen damit, statt sie zu raten:
+
+```css
+/* falsch: bleibt bei 100 % stehen, wenn die Oberfläche auf 130 % steht */
+.wert { font-size: 26px; }
+
+/* richtig: wächst und schrumpft mit */
+.wert { font-size: calc(26px * var(--ll-fs, 1)); }
+```
+
+Geändert wird das nicht nur beim Laden, sondern auch, wenn jemand während des
+Betriebs die Schrift oder die Textgröße umstellt. Die Werte kommen als Text,
+`--ll-fs` ist darum `"1.25"` und nicht `1.25` — für `calc()` ist das
+egal, für `parseFloat()` nicht.
 
 ---
 

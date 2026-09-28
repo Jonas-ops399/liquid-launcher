@@ -548,15 +548,25 @@ Buttons in der Seitenleiste, nur schwächer.
 | Karten und Zeilen (neu) | 0.16, bis 5px | keine |
 
 Erfasst sind `.world-card`, `.mod-row` (Accounts), `.srv-row` (Server),
-`.stat-tile` und `.lang-row`.
+`.stat-tile`, `.lang-row`, `.hero` und `.profile-card`.
 
-**Bewusst nicht:** `.news-card` und `.news-item` sind statische Newstexte ohne
-Klick-Handler — ein wandernder Textblock sieht nach kaputtem Layout aus, nicht
-nach Effekt. `.stat-card` ist der *Container* über der Kachelreihe; läge der
-Selektor dort, wanderte die ganze Karte samt Überschrift mit. `.settings-row`
-sind reine Beschriftungszeilen.
+Alle sieben reagieren auf Überfahren, aber **nicht alle sieben bewegen sich**:
 
-Drei Fehler, die dabei auffielen und die `test-hover-move.js` festhält:
+| | reagiert sichtbar | bewegt sich mit |
+|---|---|---|
+| `.hero`, `.profile-card` | ja | ja |
+| `.world-card`, `.mod-row`, `.srv-row`, `.stat-tile`, `.lang-row` | ja | ja |
+| `.stat-card`, `.shortcut-card`, `.settings-karte`, `.glass`, `.we-card`, `.opts-card` | ja | **nein** |
+
+Die dritte Zeile bekommt nur die Optik (Rahmen, Schatten, Anhebung) — ein
+wandernder Block ohne eigenen Klick-Handler sieht nach kaputtem Layout aus.
+`.stat-card` ist außerdem der *Container* über der Kachelreihe; läge der
+Selektor dort, wanderte die ganze Karte samt Überschrift mit.
+
+**Bewusst nicht erfasst:** die frühere Newskarte ist inzwischen der
+Schnellzugriff (siehe unten), und `.settings-row` sind reine Beschriftungszeilen.
+
+Vier Fehler, die dabei auffielen und die `test-hover-move.js` festhält:
 
 1. **Der Bezugspunkt muss beim Betreten festgehalten werden.** Wird er bei
    jedem `mousemove` neu aus `getBoundingClientRect()` gelesen, schiebt das
@@ -571,16 +581,132 @@ Drei Fehler, die dabei auffielen und die `test-hover-move.js` festhält:
 3. **Inline-Styles müssen nach dem Rücklauf wieder weg.** `el.style.transition`
    überschreibt sonst dauerhaft die Transition aus dem CSS, und das nächste
    Aufblitzen verläuft sich anders, als das Stylesheet es vorsieht.
+4. **Der `mousemove`-Pfad muss genauso gesperrt sein wie der `mouseover`-Pfad.**
+   Der Zustand in `hoverState` überlebt das Verlassen einer Karte absichtlich
+   520 ms, damit der Rücklauf weich aussieht. In diesem Zeitfenster bewegt
+   sich die Karte trotz abgeschalteter Bewegung weiter — und schaltet man
+   genau darin den Schalter „Weniger Bewegung" um, wandert sie unter dem
+   Zeiger weiter, während man auf die Einstellung schaut, die man gerade
+   ausgeschaltet hat. Beide Pfade fragen deshalb `bewegungAus()`, und
+   `bewegungAnwenden()` räumt über `hoverAufraeumen()` alles weg, was gerade
+   unterwegs ist.
 
-Zusätzlich wird `prefers-reduced-motion` respektiert. Wer unter Windows
-*Einstellungen → Barrierefreiheit → Animationseffekte* ausgeschaltet hat, sieht
-deshalb bewusst keine Bewegung — das ist beabsichtigt, kein Fehler.
+**Verifiziert.** 29 Prüfungen in `test-hover-move.js`, das den echten Code aus
+`index.html` lädt statt einer Kopie. Abschnitt 7 prüft beide Bewegungsquellen
+(Windows-Einstellung *Animationseffekte* und der eigene Schalter) an beiden
+Stufen. Zusätzlich im echten Electron-Fenster gemessen: eine Kachel mit
+196×78 px sitzt bei `translate(4.72px, 2.92px)` nach simuliertem Zeigerkontakt,
+also unterhalb der 5px-Grenze. **Nicht verifiziert:** die Optik mit eigenen
+Augen — gemessen ist die Geometrie, nicht das Aussehen.
 
-**Verifiziert.** 19 Prüfungen in `test-hover-move.js`, das den echten Code aus
-`index.html` lädt statt einer Kopie. Zusätzlich im echten Electron-Fenster
-gemessen: eine Kachel mit 196×78 px sitzt bei `translate(4.72px, 2.92px)` nach
-simuliertem Zeigerkontakt, also unterhalb der 5px-Grenze. **Nicht verifiziert:**
-die Optik mit eigenen Augen — gemessen ist die Geometrie, nicht das Aussehen.
+### Einstellungen
+
+Die Ansicht *Einstellungen* ist von einer langen Liste von Zeilen zu fünf
+Karten in zwei Spalten umgebaut worden. Die Microsoft-Login-Karte steht
+darunter über die volle Breite, weil dort Text steht und keine Auswahl.
+
+| Karte | Inhalt |
+|---|---|
+| **Darstellung** | Sprache, Schrift, Textgröße, eigene Schriftdatei, „Weniger Bewegung" |
+| **Karten-Layout** | Raster der Startseite ansehen und anordnen |
+| **Fenster** | Breite, Höhe, Position, zentrieren, zurücksetzen |
+| **Widgets** | Widgets hinzufügen |
+| **Microsoft-Login** | Status, Client-ID, anmelden/abmelden (über beide Spalten) |
+
+Ganz oben steht ein **Suchfeld**. Es findet nicht nur den sichtbaren Text,
+sondern die Übersetzungen aller vier Sprachen: Wer auf Deutsch „schrift"
+eintippt, findet die Karte auch dann, wenn die Oberfläche gerade auf Englisch
+steht. Grundlage ist der Textinhalt der Karte plus alle Werte, die hinter
+`data-i18n` stehen — deshalb ist der Treffer über die Sprachumschaltung hinweg
+nicht blind.
+
+#### Schrift und Textgröße
+
+* **Schrift** — acht Systemschriften als Auswahlliste. Jede ist ein echter
+  Stapel mit Rückfall, keine Familie ohne Ersatz; „Consolas" bringt als
+  zweiten Eintrag „Cascadia Mono" mit, damit die Oberfläche auch dort lesbar
+  bleibt, wo Cascadia fehlt.
+* **Textgröße** — 85 bis 125 Prozent in Schritten von 5.
+* **Eigene Datei** — eine `.ttf`/`.otf`/`.woff`/`.woff2` aus dem eigenen
+  Rechner. Höchstens 4 MB, landet in
+  `%APPDATA%\Liquid Launcher\schrift\`.
+* **Schrift und Größe zurücksetzen** — beides auf Standard in einem Klick.
+
+**Wie die eigene Datei in die Oberfläche kommt.** Der Renderer läuft als
+`file://`, und `webSecurity` bleibt eingeschaltet — eine `@font-face`-Regel auf
+einen Dateipfad würde der Browser als „Zugriff auf andere Herkunft" ablehnen.
+Die Datei kommt deshalb nicht als Pfad, sondern als **Data-URI** über einen
+eigenen IPC-Kanal (`schriften:waehlen` / `schriften:lesen` /
+`schriften:vergessen`) aus dem Hauptprozess in die Seite. Der feste
+Familienname `LiquidEigeneSchrift` ist ein Bezeichner, kein Dateiname; der
+echte Dateiname steht in `settings.json` und in der Statuszeile, **nicht** in
+der CSS-Regel. Die Bytes landen also nur im Arbeitsspeicher.
+
+**Drei Dinge, die dabei auffielen:**
+
+1. **Die Textgröße ist ein Multiplikator, kein `zoom`.** Jede `font-size` in
+   `index.html` steht als `calc(Npx * var(--fs))`, und `--fs` ist der
+   Faktor aus dem Regler. `zoom` am `<body>` wäre kürzer, skaliert aber
+   auch Raster, Abstände und Bildmaßstäbe und macht die Kacheln des
+   Layout-Rasters kaputt.
+2. **Absätze ohne `calc()` wären ein stiller Fehler.** Eine nackte
+   `font-size: 14px` fällt weder auf noch auf — sie ignoriert den Regler.
+   `test-einstellungen.js` prüft deshalb, dass es in der ganzen Datei
+   **keine** `font-size` ohne `calc` gibt.
+3. **Ungültige Bytes müssen abgewiesen werden.** Eine Datei mit Müll im
+   Kopf ließ sich als Data-URI einhängen, und die Oberfläche behauptete
+   trotzdem „Eigene Datei", während nichts angezeigt wurde. `eigeneFontLaden()`
+   prüft die Datei jetzt mit `document.fonts.load()` und fällt bei einem
+   Fehlschlag auf die Systemschrift zurück — mit der Meldung *„Die Datei …
+   lässt sich nicht als Schrift verwenden."* Der Test prüft beide Wege
+   gegeneinander: dieselbe Datei mit brauchbaren und mit unbrauchbaren Bytes.
+
+#### „Weniger Bewegung"
+
+Ein Schalter in der Karte *Darstellung*. Er sperrt **beide** Stufen der
+Überfahrtsbewegung — die Karten genauso wie die Knöpfe — und er wirkt
+zusammen mit der Windows-Einstellung *Einstellungen → Barrierefreiheit →
+Animationseffekte*. Beide Quellen laufen über eine einzige Abfrage,
+`bewegungAus()`, statt zweier; zwei unabhängige Abfragen derselben Sache
+laufen beim nächsten Ändern auseinander.
+
+Zusätzlich setzt der Schalter die Klasse `ll-wenig-bewegung` auf `<html>`.
+Die schaltet die weichen Übergänge ab — nicht die Bewegung selbst, das macht
+`bewegungAus()`. Der Unterschied ist sichtbar: eine Karte, die gerade
+unterwegs ist, hält sonst mitten in der Bewegung an.
+
+#### Schnellzugriff statt Newskarte
+
+Die Newskarte war statischer Text ohne Klick-Handler. Sie ist durch eine
+Schnellzugriff-Karte ersetzt: **Welten**, **Mods**, **Server**,
+**Einstellungen**. Ein Klick darauf wechselt die Ansicht und setzt den
+Eintrag in der Seitenleiste entsprechend. Der Kartenblock heißt im gespeicherten
+Layout jetzt `shortcut` statt `news`; alte `settings.json` werden beim Start
+übernommen (`layoutUebernehmen()`).
+
+#### Zwei Fehler, die erst der Fenster-Test gefunden hat
+
+1. **`syncLayout()` hat gespeichert.** Die Funktion wird beim Start und bei
+   jedem einzelnen Mauspixel eines Zuges aufgerufen. Beim ersten Aufruf hat
+   sie deshalb das **Standardlayout** in die Datei geschrieben, bevor das
+   gespeicherte gelesen war — die eigene Anordnung der Karten war nach dem
+   ersten Start futsch und kam nie wieder. Sichtbar geworden ist das an der
+   Migration von `news` nach `shortcut`, die im Fenster-Test nicht griff,
+   obwohl sie in `test-einstellungen.js` nachweislich vorhanden war.
+   Jetzt gilt: `syncLayout()` **wendet nur an**, `layoutSpeichern()` **schreibt
+  **, und das nur beim Loslassen der Maustaste — ein Zug über drei Sekunden
+   schreibt nicht mehr Hunderte Dateien.
+2. **Ein abgebrochener `mouseover` ließ die Karte weiterlaufen.** Siehe
+   *Bewegen beim Überfahren*, Punkt 4.
+
+**Verifiziert.** 146 Prüfungen in `test-einstellungen.js` (statisch, prüft die
+ausgelieferte Datei) und 111 Prüfungen in `test-einstellungen-fenster.js` im
+echten Electron-Fenster mit 1400×900, echtem `preload` und echter `index.html`.
+Im Fenster gemessen: der Einstellungsbereich ist 1595 px hoch bei 664 px
+sichtbar, also wirklich rollbar; die Schrift wird als `--font-ui`
+angewendet; 110 % machen aus 44 px Überschrift 48,4 px; die Suche findet
+`FENSTER` genauso wie `fenster`; das Layout übersteht zwei Starts
+unverändert. **Nicht verifiziert:** wie es mit eigenen Augen aussieht.
 
 ### Widgets auf der Startseite
 
@@ -714,22 +840,55 @@ node test-auth-errors.js           # Login-Fehler werden verständlich übersetz
 node test-worlds.js                # NBT-Leser, Welt-Metadaten, Löschschutz (94 Prüfungen)
 node test-server-ping.js           # Server-Ping, MOTD, Favicons (206 Prüfungen)
 node test-instance-settings.js     # RAM-/Auflösungs-Prüfung, Grenzfälle (185 Prüfungen)
-node test-hover-move.js             # Hover-Bewegung der Karten (19 Prüfungen)
+node test-hover-move.js             # Hover-Bewegung der Karten (29 Prüfungen)
+node test-einstellungen.js          # Einstellungen, Suche, Schrift (146 Prüfungen)
+node test-snippets.js               # die injizierten Snippets sind gültiges JS (46)
 node test-widgets.js                # Widget-Suche, Manifest, Positivliste (96 Prüfungen)
 node test-widget-anzeige.js         # was die Kacheln wirklich anzeigen (58 Prüfungen)
 node test-ms-registration.js        # Azure-Registrierung gegen Microsoft prüfen (Netz)
 npx electron test-auth.js           # echter Login, isoliert (öffnet ein Fenster)
 node test-full-launch.js 1.21.4 60  # echter Start, ohne UI (ca. 500 MB beim ersten Mal)
-node_modules\electron\dist\electron.exe test-widgets-fenster.js   # echtes Fenster (63)
+node_modules\electron\dist\electron.exe test-widgets-fenster.js      # echtes Fenster (63)
+node_modules\electron\dist\electron.exe test-einstellungen-fenster.js # echtes Fenster (111)
 ```
 
-`test-widgets-fenster.js` braucht das `electron.exe` aus `node_modules` direkt
-und nicht `npx electron` — es setzt vor `registerIpcHandlers()` ein eigenes
-`userData`, damit der Test weder das echte `accounts.json` noch den echten
-Widget-Ordner anfasst. Der Test meldet Konsolenfehler, trennt dabei aber
-zwischen Fehlern der App und solchen, die der Test selbst verursacht: die
-Fensterkanäle (`window:*`) liegen in `main.js` und nicht in `ipc-handlers.js`,
-also registriert dieser Test sie nicht.
+`test-widgets-fenster.js` und `test-einstellungen-fenster.js` brauchen das
+`electron.exe` aus `node_modules` direkt und nicht `npx electron` — sie setzen
+vor `registerIpcHandlers()` ein eigenes `userData`, damit der Test weder das
+echte `accounts.json` noch den echten Widget-Ordner anfasst. Der Widget-Test
+meldet Konsolenfehler, trennt dabei aber zwischen Fehlern der App und solchen,
+die der Test selbst verursacht: die Fensterkanäle (`window:*`) liegen in
+`main.js` und nicht in `ipc-handlers.js`, also registriert dieser Test sie
+nicht.
+
+**"Neustart" in den Fenster-Tests heißt nicht "Seite neu laden".**
+`settings.json` wird bei `registerIpcHandlers()` genau einmal von der Platte
+gelesen. Ein blasses `reload()` lieferte deshalb den alten, im Speicher
+liegenden Stand — und alle Persistenz-Prüfungen wären grün gewesen, ohne dass
+irgendetwas gespeichert worden wäre. Die Fenster-Tests melden deshalb **alle**
+Kanäle ab, die in `ipc-handlers.js` vorkommen (die Liste wird aus der Quelle
+gelesen, nicht abgetippt), und registrieren sie neu.
+
+Drei Dinge, die bei diesen Tests Zeit gekostet haben und die darum hier
+stehen:
+
+1. **Ein Fenster, nicht ein neues pro Abschnitt.** Chromium verweigert
+   gelegentlich das Laden (`ERR_FAILED (-2)`), wenn das vorherige gerade
+   abgeräumt wird.
+2. **Jedes injizierte Snippet wird einzeln auf Syntax geprüft**
+   (`test-snippets.js`). `node --check` auf der *Testdatei* meldet einen fehlenden Backtick
+   **nicht**: der Backtick schließt den Template-String, und alles danach
+   wird stillschweigend zu Text im String. Die Datei ist gültiges JavaScript
+   und tut nicht, was da steht. Der Fehler tauchte dann erst zur Laufzeit
+   drüben im Renderer auf, als `Uncaught SyntaxError` ohne Zeilennummer
+   vom echten Code.
+3. **Ein fehlendes DOM-Element ergibt eine falsche Zahl, keinen Absturz.**
+   Ein `querySelector` mit leerem Ergebnis liefert `0`, `null` oder `''` —
+   der Test meldet „0 Treffer" und man sucht den Fehler im Programm, während
+   er im Test steht. Deshalb hat jeder Test eine Kontrolle, und jede Messung
+   steht neben einer zweiten Messung, die sich vom selben Wert unterscheiden
+   muss: gültige gegen unbrauchbare Datei, gültiger gegen ungültiger Pfad,
+   gespeichertes Layout gegen Standardlayout.
 
 `test-launch-chain.js` prüft unter anderem, dass die Client-JAR an erster
 Stelle der Classpath steht, dass keine macOS-Bibliotheken auf der Windows-Classpath
@@ -1153,6 +1312,11 @@ und die macOS-Argument-Prüfung.
   aus dem Internet lädt. Auf einem Rechner mit OAuth-Tokens ist beliebiges
   JavaScript aus fremder Quelle kein vertretbares Risiko; die Dateien werden
   von Hand in `%APPDATA%\Liquid Launcher\widgets\` gelegt.
+- **Die eigene Schriftdatei wird nicht aus der Oberfläche entfernt.** „Entfernen"
+  löscht die Datei und den Eintrag; es gibt keinen Weg, sie nur für diesen
+  Start zu umgehen, ohne den Ordner von Hand zu leeren. Bewusst so: ein
+  zweiter Schalter „nur für diese Sitzung" wäre eine Einstellung, die man
+  nicht wiederfindet.
 
 ---
 
@@ -1247,6 +1411,42 @@ ausgeschlossen.
   eine Kachel mit Fehlermeldung; die übrigen Kacheln bleiben bestehen
 - **Entfernen und Anordnen** wirken auf `settings.json` und überdauern einen
   Neustart; im Bearbeiten-Modus sind die Kacheln ziehbar, außerhalb nicht
+- **Die Einstellungen sind fünf Karten in zwei Spalten**, die
+  Microsoft-Login-Karte über die volle Breite darunter. Im Fenster gemessen:
+  der Bereich ist 1595 px hoch bei 664 px sichtbar, rollt also wirklich
+- **Die Suche findet Karten über die Sprachumschaltung hinweg.** Gesucht wird
+  in allen vier Sprachfassungen, nicht nur im gerade sichtbaren Text; `FENSTER`
+  findet dieselbe Karte wie `fenster`, ein Unsinnswort findet nichts und sagt
+  das
+- **Die Textgröße ist ein Multiplikator.** 120 % machen aus 44 px Überschrift
+  52,8 px; in der ganzen `index.html` gibt es keine einzige `font-size` ohne
+  `calc(... * var(--fs))`, weil eine nackte `font-size` den Regler ignorieren
+  würde, ohne dass irgendetwas auffällt
+- **Die eigene Schriftdatei kommt als Data-URI an und wird als Schrift
+  erkannt**, mit brauchbaren Bytes geprüft gegen dieselbe Datei mit Müll im
+  Kopf: im ersten Fall bleibt „Eigene Datei" gewählt, im zweiten fällt die
+  Auswahl auf die Systemschrift zurück und die Statuszeile sagt, dass sich
+  die Datei nicht als Schrift verwenden lässt. Der echte Dateiname steht in
+  `settings.json`, **nicht** in der erzeugten `@font-face`-Regel
+- **Eine kaputte Schriftdatei wird nicht als geladen gemeldet.** Ohne die
+  Prüfung mit `document.fonts.load()` hätte die Oberfläche weiter
+  „Eigene Datei" behauptet, während der Browser die Bytes stillschweigend
+  verworfen hätte
+- **Der Schalter „Weniger Bewegung" wirkt auf beide Bewegungsstufen und
+  beide Quellen** — eigene Einstellung und Windows-*Animationseffekte*. Im
+  Fenster geprüft: die Karte bewegt sich beim Überfahren, steht mit
+  eingeschaltetem Schalter still, und kommt nach dem Ausschalten zurück.
+  Einschließlich des Falls, in dem der Schalter genau in den 520 ms
+  umgeschaltet wird, in denen der Rücklauf einer Karte noch läuft
+- **Das Karten-Layout überlebt einen Neustart.** Gemessen über zwei Starts
+  hinweg an der ausgelieferten Datei. Vor dieser Korrektur schrieb der
+  Startvorgang selbst das Standardlayout in die Datei, und die eigene
+  Anordnung war nach dem ersten Start weg — dieser Fehler ist in
+  `test-einstellungen-fenster.js` als eigener Abschnitt festgehalten
+- **Ein altes Layout mit `news` wird übernommen**, mit einer Gegenprobe:
+  dieselbe Position einmal mit `news` und einmal mit `shortcut` gespeichert
+  ergibt dasselbe Ergebnis, und dieses Ergebnis ist nachweislich **nicht** die
+  Standardposition
 
 **Nicht verifiziert, weil man dafür hinschauen muss:**
 
@@ -1413,7 +1613,10 @@ test-auth-errors.js    Login-Fehlermeldungen isoliert testbar
 test-worlds.js         NBT-Leser, Welt-Metadaten, Loeschschutz
 test-server-ping.js    Server-Ping, MOTD, Favicons (echte TCP-Server)
 test-instance-settings.js  Startoptionen: Grenzen, Einschleus-Versuche, Datei
-test-hover-move.js        Hover-Bewegung der Karten: Weg, Grenze, Vorrang, Reduced-Motion
+test-hover-move.js        Hover-Bewegung der Karten: Weg, Grenze, Vorrang, beide Quellen
+test-einstellungen.js     Einstellungen: Karten, Suche, Schrift, Sicherheit, i18n
+test-einstellungen-fenster.js  echtes Fenster: 5 Karten, Suche, Schrift, Persistenz
+test-snippets.js          die injizierten Snippets sind gueltiges JavaScript
 test-widgets.js           Widget-Suche, Manifest, Pfad-Traversal, Positivliste
 test-widget-anzeige.js    was die Kacheln tatsaechlich anzeigen (feste Uhrzeit)
 test-widgets-fenster.js   echtes Electron-Fenster: Sandbox, Tokens, Bedienung

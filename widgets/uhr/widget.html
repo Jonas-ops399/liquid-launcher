@@ -17,14 +17,17 @@
   html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
   body {
     display:flex; align-items:center; justify-content:center;
-    font-family: inherit; -webkit-user-select:none; user-select:none;
+    /* --ll-font kommt vom Launcher, siehe themeStile() in widget-host.js.
+       Ein iframe erbt Schriftangaben NICHT aus dem Elternfenster, deshalb
+       wird die eingestellte Schrift ausdruecklich durchgereicht. */
+    font-family: var(--ll-font, inherit); -webkit-user-select:none; user-select:none;
   }
   .mitte { text-align:center; line-height:1.15; }
   .zeile { display:flex; align-items:baseline; justify-content:center; gap:5px; }
-  .zeit { font-size:29px; font-weight:650; letter-spacing:-.5px; color:var(--ll-text-hi, #fff); }
-  .sek  { font-size:15px; font-weight:600; color:var(--ll-text-lo, rgba(255,255,255,.55)); }
-  .datum{ font-size:12px; color:var(--ll-text-lo, rgba(255,255,255,.55)); margin-top:3px; }
-  .nix  { font-size:13px; color:var(--ll-text-lo, rgba(255,255,255,.55)); }
+  .zeit { font-size:calc(29px * var(--ll-fs, 1)); font-weight:650; letter-spacing:-.5px; color:var(--ll-text-hi, #fff); }
+  .sek  { font-size:calc(15px * var(--ll-fs, 1)); font-weight:600; color:var(--ll-text-lo, rgba(255,255,255,.55)); }
+  .datum{ font-size:calc(12px * var(--ll-fs, 1)); color:var(--ll-text-lo, rgba(255,255,255,.55)); margin-top:3px; }
+  .nix  { font-size:calc(13px * var(--ll-fs, 1)); color:var(--ll-text-lo, rgba(255,255,255,.55)); }
 </style>
 </head>
 <body>
