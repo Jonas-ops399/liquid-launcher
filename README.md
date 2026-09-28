@@ -537,6 +537,51 @@ den echten Stand, Instanzwechsel lädt die Werte der anderen Instanz.
   hinterlegter Client-ID sichtbar
 - **12 Themes**, Sidebar, Instanz-Auswahl, Account-Verwaltung im UI
 
+### Bewegen beim Überfahren
+
+Karten und Listenzeilen folgen dem Zeiger leicht — dieselbe Idee wie an den
+Buttons in der Seitenleiste, nur schwächer.
+
+| | Weg | Skalierung |
+|---|---|---|
+| Buttons, Schalter, `.nav-item` (bestehend) | 0.28, bis 10px | 1.03 |
+| Karten und Zeilen (neu) | 0.16, bis 5px | keine |
+
+Erfasst sind `.world-card`, `.mod-row` (Accounts), `.srv-row` (Server),
+`.stat-tile` und `.lang-row`.
+
+**Bewusst nicht:** `.news-card` und `.news-item` sind statische Newstexte ohne
+Klick-Handler — ein wandernder Textblock sieht nach kaputtem Layout aus, nicht
+nach Effekt. `.stat-card` ist der *Container* über der Kachelreihe; läge der
+Selektor dort, wanderte die ganze Karte samt Überschrift mit. `.settings-row`
+sind reine Beschriftungszeilen.
+
+Drei Fehler, die dabei auffielen und die `test-hover-move.js` festhält:
+
+1. **Der Bezugspunkt muss beim Betreten festgehalten werden.** Wird er bei
+   jedem `mousemove` neu aus `getBoundingClientRect()` gelesen, schiebt das
+   Element seinen eigenen Referenzpunkt mit. Am Rand entsteht dann ein
+   Flackern: Element wandert aus dem Zeiger → `mouseout` → zurückschnellen →
+   wieder unter dem Zeiger → `mouseover` → von vorn. Bei breiten Zeilen wie
+   `.srv-row` ist das sichtbar, bei den 46px-Buttons nicht — die kommen
+   ohnehin nicht weit genug, um herauszurutschen.
+2. **Stufe 1 muss Vorrang haben, wenn ein Button in einer Karte steckt.**
+   Sonst wandert beides: die Karte als Karte und der Button als Button. Der
+   Guard sitzt deshalb im gemeinsamen `hoverTarget()`.
+3. **Inline-Styles müssen nach dem Rücklauf wieder weg.** `el.style.transition`
+   überschreibt sonst dauerhaft die Transition aus dem CSS, und das nächste
+   Aufblitzen verläuft sich anders, als das Stylesheet es vorsieht.
+
+Zusätzlich wird `prefers-reduced-motion` respektiert. Wer unter Windows
+*Einstellungen → Barrierefreiheit → Animationseffekte* ausgeschaltet hat, sieht
+deshalb bewusst keine Bewegung — das ist beabsichtigt, kein Fehler.
+
+**Verifiziert.** 19 Prüfungen in `test-hover-move.js`, das den echten Code aus
+`index.html` lädt statt einer Kopie. Zusätzlich im echten Electron-Fenster
+gemessen: eine Kachel mit 196×78 px sitzt bei `translate(4.72px, 2.92px)` nach
+simuliertem Zeigerkontakt, also unterhalb der 5px-Grenze. **Nicht verifiziert:**
+die Optik mit eigenen Augen — gemessen ist die Geometrie, nicht das Aussehen.
+
 ### Tests
 
 Skripte, die ohne Electron-Fenster laufen und daher schnell Fehler finden:
@@ -550,6 +595,7 @@ node test-auth-errors.js           # Login-Fehler werden verständlich übersetz
 node test-worlds.js                # NBT-Leser, Welt-Metadaten, Löschschutz (94 Prüfungen)
 node test-server-ping.js           # Server-Ping, MOTD, Favicons (206 Prüfungen)
 node test-instance-settings.js     # RAM-/Auflösungs-Prüfung, Grenzfälle (185 Prüfungen)
+node test-hover-move.js             # Hover-Bewegung der Karten (19 Prüfungen)
 node test-ms-registration.js        # Azure-Registrierung gegen Microsoft prüfen (Netz)
 npx electron test-auth.js           # echter Login, isoliert (öffnet ein Fenster)
 node test-full-launch.js 1.21.4 60  # echter Start, ohne UI (ca. 500 MB beim ersten Mal)
@@ -1197,6 +1243,7 @@ test-auth-errors.js    Login-Fehlermeldungen isoliert testbar
 test-worlds.js         NBT-Leser, Welt-Metadaten, Loeschschutz
 test-server-ping.js    Server-Ping, MOTD, Favicons (echte TCP-Server)
 test-instance-settings.js  Startoptionen: Grenzen, Einschleus-Versuche, Datei
+test-hover-move.js        Hover-Bewegung der Karten: Weg, Grenze, Vorrang, Reduced-Motion
 test-ms-registration.js    Azure-Registrierung gegen Microsoft, mit Kontrollprobe
 test-auth.js          echter Login isoliert (npx electron, kein UI vom Launcher)
 Anmeldung-testen.bat  Doppelklick-Wrapper fuer test-auth.js (Windows)

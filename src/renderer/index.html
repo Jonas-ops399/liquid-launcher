@@ -4082,6 +4082,88 @@
     el.style.transform = '';
   });
 
+  // ---------- Hover-Bewegung fuer Karten und Zeilen (Stufe 2) ----------
+  //
+  // Stufe 1 oben sind Buttons und kleine Schalter: die folgen dem Zeiger
+  // deutlich (0.28, bis 10px). Karten und Listenzeilen sollen sich "leicht"
+  // bewegen, deshalb eine eigene schwächere Stufe - sie in
+  // MAGNETIC_SELECTOR aufzunehmen wuerde sie genauso stark mitziehen lassen
+  // wie die Buttons und das waere bei breiten Zeilen zu viel.
+  //
+  // Bewusst NICHT genommen:
+  // - .news-card / .news-item: statische Newstexte ohne Klick-Handler. Ein
+  //   wandernde Textblock sieht nach kaputtem Layout aus, nicht nach Effekt.
+  // - .stat-card: das ist der Container UEBER der Kachelreihe. Naeme
+  //   .stat-card statt .stat-tile, wanderte die ganze Karte samt Titel mit.
+  // - .settings-row: Beschriftungszeilen ohne eigenen Klick-Handler.
+  // - .we-card / .clientid-row: haben keine CSS-Regel, Geometrie unbekannt.
+  const HOVER_SELECTOR = '.world-card, .mod-row, .srv-row, .stat-tile, .lang-row';
+  const HOVER_STRENGTH = 0.16;
+  const HOVER_MAX = 5; // px
+  const HOVER_SPRING = 'transform .5s cubic-bezier(.34,1.56,.64,1)';
+
+  // Der Mittelpunkt wird einmal beim Betreten festgehalten statt bei jedem
+  // mousemove neu gemessen. Sonst schiebt das Element seinen eigenen
+  // Referenzpunkt mit - und am Rand kann es in ein Flackern geraten:
+  // Element wandert aus dem Zeiger -> mouseout -> zurueckschnellen -> wieder
+  // unter dem Zeiger -> mouseover -> von vorn. Bei breiten Zeilen wie
+  // .srv-row waere das deutlich sichtbar, bei den kleinen Buttons der
+  // Stufe 1 faellt es nicht auf, weil sie 10px sowieso nicht weit kommen.
+  const hoverState = new WeakMap();
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Stufe 1 gewinnt, wenn beides passt. Sonst wuerde eine Karte mit Button
+  // darin zweimal wandern - einmal als Karte, einmal als Button - und das
+  // sieht sofort kaputt aus.
+  function hoverTarget(e){
+    const t = e.target;
+    if (!(t instanceof Element)) return null;
+    if (t.closest(MAGNETIC_SELECTOR)) return null;
+    return t.closest(HOVER_SELECTOR);
+  }
+
+  document.addEventListener('mouseover', (e) => {
+    const el = hoverTarget(e);
+    if (!el || reduceMotion.matches) return;
+    const prev = hoverState.get(el);
+    if (prev && prev.timer) { clearTimeout(prev.timer); prev.timer = null; }
+    hoverState.set(el, { rect: el.getBoundingClientRect(), timer: null });
+    el.style.transition = 'none';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    const el = hoverTarget(e);
+    if (!el) return;
+    const st = hoverState.get(el);
+    if (!st) return;
+    const dx = e.clientX - (st.rect.left + st.rect.width / 2);
+    const dy = e.clientY - (st.rect.top + st.rect.height / 2);
+    const tx = Math.max(-HOVER_MAX, Math.min(HOVER_MAX, dx * HOVER_STRENGTH));
+    const ty = Math.max(-HOVER_MAX, Math.min(HOVER_MAX, dy * HOVER_STRENGTH));
+    el.style.transform = `translate(${tx}px, ${ty}px)`;
+  });
+
+  document.addEventListener('mouseout', (e) => {
+    const el = hoverTarget(e);
+    if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+    const st = hoverState.get(el);
+    if (!st) return;
+    el.style.transition = HOVER_SPRING;
+    el.style.transform = '';
+    // Inline-Styles nach dem Ruecklauf wieder entfernen. Bleiben sie
+    // stehen, ueberschreiben sie dauerhaft die Transition aus dem CSS und
+    // das naechste Aufblitzen verlaeuft sich anders als das CSS es vorsieht.
+    if (st.timer) clearTimeout(st.timer);
+    st.timer = setTimeout(() => {
+      const cur = hoverState.get(el);
+      if (cur && cur.timer === st.timer) {   // nicht inzwischen neu betreten
+        el.style.transition = '';
+        el.style.transform = '';
+        hoverState.delete(el);
+      }
+    }, 520);
+  });
+
   // ---------- Server-Panel ----------
   let mockServers = {}; // nur für die Browser-Vorschau ohne Electron: { instanceId: [...] }
 

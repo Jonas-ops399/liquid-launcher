@@ -9,14 +9,39 @@ out/
 
 # ---------------------------------------------------------------------------
 # Gradle-Cache (Lokal, nicht Quellcode)
-#
-# fuer Fabric/Forge. Die eigentlichen Gradle-Dateien (build.gradle.kts,
-# settings.gradle.kts, gradle.properties) sind Quellcode und werden
-# mitveroeffentlicht - nur der Cache nicht.
 # ---------------------------------------------------------------------------
 .gradle/
 gradle-app.setting
-!gradle/wrapper/gradle-wrapper.jar
+
+# ---------------------------------------------------------------------------
+# NICHT veroeffentlichen: verwaister Kotlin/Jetpack-Compose-Prototyp
+#
+# build.gradle.kts, settings.gradle.kts und src/main/kotlin/ gehoeren zu einem
+# frueheren Desktop-Prototyp in Jetpack Compose. Der Launcher selbst ist
+# Electron: package.json zeigt auf src/main/main.js, und es gibt keinen
+# Aufruf von Gradle irgendwo im Projekt. Diese Dateien werden von nichts
+# geladen, von nichts gebaut und von nichts referenziert.
+#
+# Sie sind ausserdem nicht einmal syntaktisch gueltig: in build.gradle.kts
+# steht ein "import" VOR dem plugins-Block, was Kotlin verbietet. Ein
+# freiwilliger Testlauf wuerde dort mit einem Parserfehler abbrechen.
+#
+# Warum das extra im veroeffentlichten Repository stoert: Microsoft prueft
+# die App-Zulassung und schaut dabei in dieses Repo. Wenn er es oeffnet,
+# sieht er zwei angefangene Projekte nebeneinander - eines davon sieht
+# durch Gradle-Dateien sogar aus wie das Hauptprojekt. Das ist genau die
+# Sorte Detail, die bei einer Pruefung den Unterschied macht zwischen
+# "eine saubere App" und "und wie viele angefangene Sachen noch".
+#
+# Die Dateien bleiben auf der Platte. Es wird hier nichts geloescht.
+# ---------------------------------------------------------------------------
+build.gradle.kts
+settings.gradle.kts
+gradle.properties
+gradle/
+gradlew
+gradlew.bat
+/src/main/kotlin/
 
 # ---------------------------------------------------------------------------
 # NIEMALS oeffentlich machen: veralteter Geruest-Stand vom 20.09.2026
