@@ -1,0 +1,26 @@
+{
+  "id": "ram",
+  "titel": {
+    "de": "Arbeitsspeicher",
+    "en": "Memory",
+    "es": "Memoria",
+    "fr": "Mémoire",
+    "pt": "Memória",
+    "it": "Memoria",
+    "pl": "Pamięć",
+    "tr": "Bellek",
+    "ru": "Память"
+  },
+  "beschreibung": {
+    "de": "Belegter und freier RAM, gemessen vom System.",
+    "en": "Used and free RAM, measured by the system.",
+    "es": "RAM ocupada y libre, medida por el sistema.",
+    "fr": "RAM utilisée et libre, mesurée par le système.",
+    "pt": "RAM usada e livre, medida pelo sistema.",
+    "it": "RAM usata e libera, misurata dal sistema.",
+    "pl": "Zajęty i wolny RAM, mierzony przez system.",
+    "tr": "Sistem tarafından ölçülen kullanılan ve boş RAM.",
+    "ru": "Занятая и свободная RAM, измеренная системой."
+  },
+  "breite": 1
+}

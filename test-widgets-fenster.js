@@ -266,6 +266,39 @@ app.whenReady().then(async () => {
      'das Test-Widget aus dem userData-Ordner wird gefunden', JSON.stringify(z.verfuegbar));
 
   // =====================================================================
+  gruppe('2b. Die Kacheln blenden gestaffelt ein');
+  // =====================================================================
+  // Die Einblende-Animation ist im echten Fenster nur ueber den berechneten
+  // Stil greifbar (der Test-Fenster ist unsichtbar, es gibt keinen
+  // Zwischenstand zu fotografieren). Geprueft wird deshalb: die Regel greift
+  // auf die echten Kacheln, jede hat ihre laufende Nummer, und "Weniger
+  // Bewegung" nimmt die Animation wieder weg.
+  const anim = JSON.parse(await js(`(function(){
+    var g = document.getElementById('statGrid');
+    var tile = g.querySelector('.wdg-tile');
+    function st(name){ return tile ? getComputedStyle(tile)[name] : '(keine Kachel)'; }
+    var vor = { animationName: st('animationName'), fill: st('animationFillMode') };
+    document.documentElement.classList.add('ll-wenig-bewegung');
+    var mitWenig = st('animationName');
+    document.documentElement.classList.remove('ll-wenig-bewegung');
+    return JSON.stringify({
+      hatKlasse: g.classList.contains('wdg-auf'),
+      vor: vor,
+      mitWenig: mitWenig,
+      index: tile ? tile.style.getPropertyValue('--wdg-i') : null
+    });
+  })()`));
+  Z.push('    ' + JSON.stringify(anim));
+  ok(anim.hatKlasse === true, 'das Raster traegt die Klasse "wdg-auf"');
+  ok(anim.vor.animationName === 'kachelAuf', 'die Kacheln laufen mit "kachelAuf"',
+     anim.vor.animationName);
+  ok(anim.vor.fill === 'backwards',
+     'fill-mode "backwards" - so bleibt die Hover-Bewegung moeglich', anim.vor.fill);
+  ok(anim.index === '0' || anim.index === '0px',
+     'die erste Kachel hat ihre laufende Nummer (--wdg-i)', String(anim.index));
+  ok(anim.mitWenig === 'none', '"Weniger Bewegung" nimmt die Einblendung weg', anim.mitWenig);
+
+  // =====================================================================
   gruppe('3. Das sandbox-Attribut');
   // =====================================================================
   const sandbox = await js(`JSON.stringify(
@@ -498,6 +531,46 @@ app.whenReady().then(async () => {
   ok(bm.dragbar === 'true', 'im Bearbeiten-Modus sind die Kacheln ziehbar');
   ok(bm.nachher === bm.vorher - 1, 'Entfernen nimmt genau eine Kachel weg',
      bm.vorher + ' -> ' + bm.nachher);
+
+  // ---------------------------------------------------------------------
+  // Der "Anpassen"-Knopf ueber den echten Klick, nicht ueber den
+  // Funktionsaufruf. Der Unterschied ist genau der Fehler: starten() haengt
+  // bei jedem Aufruf neue Listener an, und bearbeitenSchalten() ist ein
+  // Umschalter. Zwei Listener auf einem Klick sind zweimal umgeschaltet und
+  // damit ein NICHTS. index.html ruft starten() beim Laden zweimal auf, also
+  // war der Knopf ab dem ersten Start tot, ohne dass irgendwo ein Fehler
+  // aufgetaucht waere — der Zustand sah einfach nie nach einer Aenderung aus.
+  //
+  // Geprueft wird deshalb: EIN Klick schaltet genau einmal, und der
+  // Zustand ist nach starten() + Klick nicht wieder da, wo er war.
+  // =====================================================================
+  gruppe('8b. Der "Anpassen"-Knopf schaltet genau einmal');
+  const klickPfad = await js(`(function(){
+    function modus(){
+      var g = document.getElementById('statGrid');
+      return !!(g && g.classList.contains('wdg-edit'));
+    }
+    // starten() noch einmal aufrufen, wie es "Neu laden" tut. Das ist der
+    // Zustand, in dem sich die Listener sonst verdoppeln.
+    return window.WidgetHost.starten().then(function(){
+      var knopf = document.getElementById('statBearbeitenBtn');
+      if(!knopf) return JSON.stringify({ fehlt: true });
+      window.WidgetHost.bearbeitenSchalten(false);   // Ausgangslage: aus
+      var v0 = modus();
+      knopf.click();   // ein Klick
+      var v1 = modus();
+      knopf.click();   // noch einer
+      var v2 = modus();
+      return JSON.stringify({ fehlt: false, v0: v0, v1: v1, v2: v2 });
+    });
+  })()`);
+  const klickZustand = JSON.parse(await Promise.resolve(klickPfad));
+  Z.push('    ' + JSON.stringify(klickZustand));
+  ok(klickZustand.fehlt !== true, 'der "Anpassen"-Knopf ist vorhanden');
+  ok(klickZustand.v0 === false, 'Ausgangslage ist "nicht im Bearbeiten-Modus"');
+  ok(klickZustand.v1 === true, 'EIN Klick schaltet den Bearbeiten-Modus EIN - ' +
+     'bei zwei Listenern waere er zweimal umgeschaltet und bliebe aus');
+  ok(klickZustand.v2 === false, 'der zweite Klick schaltet wieder aus');
 
   // =====================================================================
   gruppe('9. Persistenz');

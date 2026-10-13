@@ -1,0 +1,26 @@
+{
+  "id": "laufwerk",
+  "titel": {
+    "de": "Freier Speicherplatz",
+    "en": "Free disk space",
+    "es": "Espacio libre",
+    "fr": "Espace libre",
+    "pt": "Espaço livre",
+    "it": "Spazio libero",
+    "pl": "Wolne miejsce",
+    "tr": "Boş disk alanı",
+    "ru": "Свободное место"
+  },
+  "beschreibung": {
+    "de": "Freie und gesamte Platte, auf der die Welten liegen.",
+    "en": "Free and total disk space where the worlds live.",
+    "es": "Espacio libre y total del disco donde están los mundos.",
+    "fr": "Espace libre et total du disque où sont les mondes.",
+    "pt": "Espaço livre e total do disco onde estão os mundos.",
+    "it": "Spazio libero e totale del disco dove si trovano i mondi.",
+    "pl": "Wolne i całkowite miejsce na dysku, na którym są światy.",
+    "tr": "Dünyaların bulunduğu diskin boş ve toplam alanı.",
+    "ru": "Свободное и общее место на диске, где хранятся миры."
+  },
+  "breite": 1
+}

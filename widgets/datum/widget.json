@@ -1,0 +1,26 @@
+{
+  "id": "datum",
+  "titel": {
+    "de": "Datum",
+    "en": "Date",
+    "es": "Fecha",
+    "fr": "Date",
+    "pt": "Data",
+    "it": "Data",
+    "pl": "Data",
+    "tr": "Tarih",
+    "ru": "Дата"
+  },
+  "beschreibung": {
+    "de": "Wochentag und Datum, in der eingestellten Sprache.",
+    "en": "Weekday and date in the selected language.",
+    "es": "Día de la semana y fecha en el idioma seleccionado.",
+    "fr": "Jour de la semaine et date dans la langue choisie.",
+    "pt": "Dia da semana e data, no idioma selecionado.",
+    "it": "Giorno della settimana e data, nella lingua selezionata.",
+    "pl": "Dzień tygodnia i data w wybranym języku.",
+    "tr": "Seçili dilde haftanın günü ve tarih.",
+    "ru": "День недели и дата на выбранном языке."
+  },
+  "breite": 1
+}

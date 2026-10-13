@@ -1,6 +1,26 @@
 {
   "id": "laufzeit",
-  "titel": "Laufzeit",
-  "beschreibung": "Wie lange der Launcher laeuft, und wie viele Instanzen es gibt.",
+  "titel": {
+    "de": "Laufzeit",
+    "en": "Uptime",
+    "es": "Tiempo activo",
+    "fr": "Durée",
+    "pt": "Tempo de atividade",
+    "it": "Tempo di attività",
+    "pl": "Czas działania",
+    "tr": "Çalışma süresi",
+    "ru": "Время работы"
+  },
+  "beschreibung": {
+    "de": "Wie lange der Launcher läuft, und wie viele Instanzen es gibt.",
+    "en": "How long the launcher has been running, and how many instances exist.",
+    "es": "Cuánto tiempo lleva abierto el launcher y cuántas instancias hay.",
+    "fr": "Depuis combien de temps le launcher tourne, et combien d’instances existent.",
+    "pt": "Há quanto tempo o launcher está em execução e quantas instâncias existem.",
+    "it": "Da quanto tempo è in esecuzione il launcher e quante istanze esistono.",
+    "pl": "Jak długo działa launcher i ile jest instancji.",
+    "tr": "Launcher'ın ne kadar süredir çalıştığı ve kaç örnek olduğu.",
+    "ru": "Как долго работает лаунчер и сколько есть инстансов."
+  },
   "breite": 1
 }

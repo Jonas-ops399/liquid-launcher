@@ -1,0 +1,26 @@
+{
+  "id": "server-status",
+  "titel": {
+    "de": "Server",
+    "en": "Servers",
+    "es": "Servidores",
+    "fr": "Serveurs",
+    "pt": "Servidores",
+    "it": "Server",
+    "pl": "Serwery",
+    "tr": "Sunucular",
+    "ru": "Серверы"
+  },
+  "beschreibung": {
+    "de": "Wie viele Server eingetragen sind, und wie viele online sind.",
+    "en": "How many servers are saved, and how many are online.",
+    "es": "Cuántos servidores hay guardados y cuántos están en línea.",
+    "fr": "Combien de serveurs sont enregistrés, et combien sont en ligne.",
+    "pt": "Quantos servidores estão registados e quantos estão online.",
+    "it": "Quanti server sono registrati e quanti sono online.",
+    "pl": "Ile serwerów zapisano i ile jest online.",
+    "tr": "Kaç sunucu kayıtlı ve kaçının çevrimiçi olduğu.",
+    "ru": "Сколько серверов сохранено и сколько из них онлайн."
+  },
+  "breite": 1
+}

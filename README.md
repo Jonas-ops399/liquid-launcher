@@ -118,13 +118,12 @@ Microsoft OAuth → Xbox Live → XSTS → Minecraft Services. Der Ablauf:
 
 **Einrichtung (einmalig, im Browser):**
 
-*Am einfachsten direkt im Launcher:* **Einstellungen → Microsoft-Login** hat ein
-Eingabefeld für die Client-ID, einen „Entfernen"-Knopf und eine aufklappbare
-Anleitung. Einfügen, **Speichern**, fertig — kein Neustart nötig. Das ersetzt das
-Handschreiben von `config.json` durch den früher nötig war (und womit sich
-schon Leute die Konfiguration zerschossen haben).
+Die Einstellungs-Karte dafür gibt es nicht mehr — dort stand nur ein einzelnes
+Eingabefeld, das die Kartenreihe unnötig gestreckt hat. Fehlt die Client-ID,
+nennt der Login-Dialog selbst den Portalweg und das nötige Redirect-URI. Beide
+Wege sind zugleich der Ersatz für das Handschreiben von `config.json`:
 
-Alternativ auf der Kommandozeile:
+Auf der Kommandozeile:
 
 ```bash
 node setup-client-id.js 12345678-1234-1234-1234-123456789012
@@ -138,10 +137,10 @@ kommt aus `productName` in `package.json` — siehe *Der userData-Ordner* unten)
 Umgebungsvariable `LIQUID_LAUNCHER_CLIENT_ID`.
 
 Eine Client-ID ist **kein Geheimnis**: Public Client IDs stehen in jedem
-Installer, den man herunterlädt. Sie wird deshalb im Klartext gespeichert und
-im UI angezeigt — anders als der `accessToken`, der den Haupt-Prozess nie
-verlässt. Das Eingabefeld prüft das Format (GUID) und lehnt eine mitkopierte
-Beschriftung sofort ab; ein falscher Wert landet nicht in der Konfiguration.
+Installer, den man herunterlädt. Sie wird deshalb im Klartext gespeichert —
+anders als der `accessToken`, der den Haupt-Prozess nie verlässt. Der Wert wird
+beim Setzen auf das GUID-Format geprüft; eine mitkopierte Beschriftung wird
+sofort abgelehnt und landet nicht in der Konfiguration.
 
 Die GUID steht in *portal.azure.com* → *Microsoft Entra ID* → *App registrations*
 → *New registration*. Drei Details, an denen es typischerweise hakt:
@@ -434,8 +433,8 @@ liefert nur weitere Fehlerquellen.
 
 ### RAM und Auflösung pro Instanz
 
-Der Seitenleisten-Punkt „Startoptionen" gehört zur **gewählten Instanz**, wie
-Welten und Server auch. Gespeichert wird in
+Die Karte „Startoptionen" in den **Einstellungen** gehört zur **gewählten
+Instanz**, wie Welten und Server auch. Gespeichert wird in
 `<Instanzordner>/instance-settings.json`; beim Start steht der Wert als
 `-Xms…`/`-Xmx…` bzw. `--width`/`--height` in der Befehlszeile. Vorher stand dort
 fest 1 GB/2 GB und 1280×720 — auf einem 32-GB-Rechner damit argerlich
@@ -533,9 +532,222 @@ den echten Stand, Instanzwechsel lädt die Werte der anderen Instanz.
   Version und lädt sonst eine passende JRE
 - **Mods** (`mods.js`) — echte Modrinth-Suche inkl. Versions-Auflösung passend
   zu Minecraft-Version und Modloader
-- **Skins** (`skins.js`) — vorhanden, hängt aber am Login-Skin; wird erst mit
-  hinterlegter Client-ID sichtbar
+- **Fabric Loader** (`fabricLoader.js`) — für Instanzen mit `modloader: "fabric"`
+  wird das Profil von `meta.fabricmc.net` geholt und mit der
+  Vanilla-`version.json` verschmolzen: Maven-Libraries werden auf die
+  Mojang-Form gebracht, die MainClass ist danach der Fabric-Einstieg
+  (`KnotClient`), und die Fabric-JVM-Argumente kommen dazu. Die Loader-Version
+  steht in der `instance.json` (sonst neueste stabile, einmal ermittelt und
+  gemerkt). Verifiziert in `test-fabric-loader.js` (63 Prüfungen, ohne Netz)
+  und gegen den echten `userData`-Ordner bis zur fertigen `classpath`
+- **Skin-Anzeige** (`skins:upload`/`getActive`/`vergessen` im Hauptprozess) - das
+  Konto zeigt ein neutrales Personen-Symbol; ein Klick auf das Skin-Feld der
+  Seitenleiste öffnet direkt die drehbare **Ganzkörper-Figur** samt zweiter
+  Ebene (Hut, Jacke, Ärmel, Hosenbeine), in der sich eine **eigene** Skin-Datei
+  wählen und wieder entfernen lässt. Der echte Mojang-Skinwechsel bleibt
+  ausgeschlossen (siehe *Skin-Anzeige: Ganzkörper und zweite Ebene*).
+- **Modpack-Import** (`modpackImport.js`) - Modrinth-`.mrpack`, CurseForge-`.zip`
+  (`manifest.json`) und Prism/MultiMC-Instanzen lesen und installieren: Mods,
+  Ressourcenpakete und `overrides/` in die Instanz, Zip-Slip-Schutz,
+  Modrinth-Suche im UI
+- **Ressourcenpakete** (`resourcepacks.js`) — Ansicht, `.zip`-Import, Löschen
+  und der Schalter, der die `resourcePacks`-Zeile der `options.txt` anfasst
+- **Grundschrift Geist** - die lizenzfreie Schrift (OFL) liegt lokal in
+  `src/renderer/assets/fonts/` bei und ist die Standard-Schrift der Oberfläche;
+  aus dem Netz wird keine Schrift geladen
 - **12 Themes**, Sidebar, Instanz-Auswahl, Account-Verwaltung im UI
+
+### Modpack-Import (Modrinth + CurseForge + Prism)
+
+Der „Neues Modpack"-Dialog hat eine Import-Sektion: eine Modpack-Datei wird
+gelesen und als neue Instanz angelegt — ganz ohne von Hand `mods/` und
+`resourcepacks/` zu befüllen.
+
+- **Zwei Formate.** Modrinth-`.mrpack` und CurseForge-`.zip` mit
+  `manifest.json`. Das Prüfen zeigt erst die Zusammenfassung (Name,
+  Pack-Version, Minecraft-Version, Modloader); geschrieben wird nichts, bevor
+  nicht *Importieren* geklickt ist.
+- **Wohin was kommt.** Mods nach `mods/`, Ressourcenpakete nach
+  `resourcepacks/`, der Rest aus `overrides/` bzw. `client-overrides/` direkt
+  in die Instanz. Steht dieselbe Datei in beiden `overrides`-Ordnern, gewinnt
+  `client-overrides`. Bestehende Dateien bleiben ohne `ueberschreiben` stehen
+  und werden als übersprungen gemeldet.
+- **Zip-Slip wird abgelehnt, nicht repariert.** Jeder Pfad, den ein Pack
+  schreiben will (Overrides und Downloads), wird vorher gegen den Instanzordner
+  geprüft. Ein Pack mit `../`-Pfaden wird abgelehnt; nichts wird geschrieben,
+  und eine halb angelegte Instanz wird wieder entfernt — es bleibt kein
+  Geisterordner.
+- **Modrinth-Suche direkt im UI.** Die Treffer zeigen Name, Minecraft-Version
+  und Downloads; der Import holt die primäre `.mrpack`-Datei.
+- **CurseForge: Die Such-API braucht einen Schlüssel, der Datei-Import
+  nicht.** Ohne hinterlegten `curseforgeApiKey` (in `settings.json`, über die
+  Einstellungen) antwortet die Suche mit einer verständlichen Meldung. Eine
+  `.zip`-Datei lässt sich trotzdem importieren: die Dateien aus dem Manifest
+  werden über ihre `downloadUrl` geladen.
+- **Quilt und NeoForge werden ehrlich abgelehnt.** Der Launcher startet
+  vanilla, fabric und forge. Ein Pack, das `quilt` oder `neoforge` verlangt,
+  wird beim Import mit einer Meldung abgewiesen und legt keine Instanz an —
+  eine Instanz, die sich nicht starten lässt, wäre schlimmer als keine.
+- **Wurzelordner, Spiegel und Server-Mods.** Wurde das Zip aus einem Ordner
+  gepackt, liegt z. B. `manifest.json` nicht ganz oben - der Import findet sie
+  trotzdem. Mehrere `downloads`-Adressen werden der Reihe nach versucht, und
+  Einträge, die nur für den Server gedacht sind (`env.server`), werden beim
+  Client-Import übersprungen statt als Fehler gemeldet.
+- **CurseForge auch ohne Schlüssel - und mit echtem Dateinamen.** Fehlt eine
+  `downloadUrl`, wird öffentlich über
+  `curseforge.com/api/v1/mods/<projekt>/files/<datei>/download` geladen. Der
+  Dateiname steht erst nach den Weiterleitungen fest und wird aus der Endadresse
+  übernommen; eine Text/HTML-Antwort wird abgelehnt, statt als kaputte `.jar`
+  im `mods/`-Ordner zu landen.
+- **Prism / MultiMC.** Ein Pack mit `instance.cfg` und `mmc-pack.json` wird
+  erkannt; Name, Minecraft-Version und Loader kommen aus diesen Dateien, und der
+  `.minecraft`-Spielordner wird übernommen. Es gilt derselbe Zip-Slip-Schutz.
+- **Aufräumen bei Fehlschlag.** Bleibt am Ende keine einzige Datei installiert
+  (nur Fehler), wird die eben angelegte Instanz wieder entfernt - ein leerer
+  Import sieht sonst wie ein Erfolg aus.
+- **Verifiziert.** 140 Prüfungen in `test-modpack-import.js`, 18 weitere in
+  `test-modpack-import-formate.js` (Wurzelordner, Spiegel-URLs, Server-Mods,
+  Prism/MultiMC, CurseForge ohne Schlüssel, Dateiname aus dem Download) -
+  darunter roh gebaute Zips mit echten `../`-Angriffen - und 57 Prüfungen im
+  echten Fenster in `test-modpack-import-fenster.js` (Import über die
+  Oberfläche, Ablehnung, Modrinth-Suche, vier Sprachen).
+
+### Ressourcenpakete einfügen und entfernen
+
+Der Launcher verwaltet die Ressourcenpakete **der gewählten Instanz** — dieselbe
+Idee wie beim Modpack-Import, nur für Texturen und Sprachdateien.
+
+- **Der Ordner ist die Wahrheit.** Gelesen wird
+  `<instanz>/resourcepacks/`. Ein Paket darf ein `.zip` **oder** ein entpackter
+  Ordner sein; Minecraft akzeptiert beide, also zeigt der Launcher beide an.
+- **Ein- und ausschalten im Spiel.** Minecraft kennt dafür kein
+  Kommandozeilenargument. Der Schalter steht in `<instanz>/options.txt` in der
+  Zeile `resourcePacks:[…]`. `resourcepacks.js` liest die Datei, ersetzt **nur
+  diese eine Zeile** und lässt Reihenfolge, Kommentare und alle anderen Optionen
+  unangetastet — ein komplettes Neuschreiben würde die Datei zerstören.
+  `vanilla` bleibt immer erhalten: ohne diesen Eintrag startet das Spiel ohne
+  Standardtexturen.
+- **Doppelte Namen werden gemeldet, nicht stillschweigend bevorzugt.** Liegt
+  dasselbe Paket einmal als `.zip` und einmal als Ordner vor, sagt der Launcher
+  das, statt eines der beiden zu wählen.
+- **Anzeige aus `pack.mcmeta`.** Das `pack_format` wird einer Minecraft-Version
+  zugeordnet. Die Tabelle ist bewusst **unvollständig**: ab Format 24 (1.21.7
+  und neuer) steht nichts mehr darin, und ein unbekanntes Format wird als
+  „neuer als bekannt" beschriftet — eine geratene Zahl in einer Versionsanzeige
+  wäre schlimmer als eine fehlende.
+- **Ein defektes Paket stürzt nichts ab.** Fehlt oder bricht `pack.mcmeta`,
+  wird das Paket trotzdem gelistet, mit dem Hinweis, und lässt sich löschen.
+- **Import ohne Netz.** Ein eigener Dateidialog nimmt ein `.zip` an und kopiert
+  es in den `resourcepacks/`-Ordner; der Kanal ist `packs:importLocal`.
+- **Vorschaubild.** `pack.png` wird aus dem `.zip` bzw. dem Ordner gelesen und
+  als Data-URL in die Liste gegeben, damit jedes Paket sein eigenes Bild zeigt
+  statt eines allgemeinen Symbols. Dateien über 256 KB werden **nicht**
+  eingebettet — dann bleibt das Symbol stehen, statt die Liste mit Megabyte
+  durch den IPC-Kanal zu füllen. Fehlt `pack.png`, ist das kein Fehler.
+- **Verifiziert.** 131 Prüfungen in `test-ressourcenpakete.js` (reines Node:
+  Lesen, Ein-/Ausschalten, Zip-Slip, Versionstabelle, Vorschaubild) und 63 im
+  echten Fenster in `test-ressourcenpakete-fenster.js`.
+
+### Skin-Anzeige: Ganzkörper und zweite Ebene
+
+Das Konto trägt statt eines Kopfausschnitts ein neutrales Personen-Symbol.
+Der Skin wird nur noch als ganze Figur gezeigt: Ein Klick auf das Skin-Feld
+der Seitenleiste öffnet direkt die Ganzkörper-Ansicht.
+
+- **Keine Kopfanzeige mehr.** Weder neben dem Namen noch in der Profilkarte
+  wird ein Kopf aus der Textur geschnitten. Ein Kopf ist bei einem Skin nur ein
+  Achtel der Figur und verdeckte die zweite Ebene (Hut, Jacke, Ärmel) - die
+  Ansicht zeigt deshalb gleich die volle Gestalt.
+- **Die Figur wird aus der Textur gebaut, nicht auf ein Bild gehofft.** Aus der
+  64×64-Skin-PNG (auch das alte 64×32-Format wird erkannt) setzt der Renderer
+  sechs Körperteile als CSS-3D-Boxen zusammen (`SKIN_TEILE`): Kopf, Körper,
+  zwei Arme, zwei Beine. Alle Flächen liegen an festen Texturpositionen, kein
+  Pixel wird verschoben; `image-rendering: pixelated` hält die Pixel scharf.
+- **Die zweite Ebene sitzt direkt darüber.** Hut, Jacke, beide Ärmel und beide
+  Hosenbeine (`ebene2`) sind eigene, leicht größere Flächen über der Grundfigur.
+  Wo der Skin dort leer ist, bleibt die Fläche durchsichtig, die Grundschicht
+  bleibt sichtbar; die Rückseiten sind ausgeblendet (`backface-visibility:
+  hidden`), damit ein leerer Layer nichts verdeckt.
+- **Drehen von Hand, stiller Selbstlauf nur ohne "Weniger Bewegung".** Ziehen
+  dreht die Figur; ohne `ll-wenig-bewegung` läuft sie zusätzlich leise von
+  selbst und pausiert während des Ziehens. Die Größe richtet sich nach dem
+  Fenster.
+- **Eigene Datei wählen und "Vergessen".** Beide Knöpfe sitzen in der
+  Ganzkörper-Ansicht. Ein `.png` wird geprüft (echte PNG-Signatur, IHDR mit
+  64×64 oder 64×32, höchstens 2 MB) und nach
+  `%APPDATA%\Liquid Launcher\skins\skin.png` kopiert. "Vergessen" entfernt
+  sie wieder; danach greift wieder der Account-Skin.
+- **Was das *nicht* ist: kein echter Skin-Wechsel.** Der Launcher zeigt eine
+  eigene Datei nur **lokal an**. Den Skin auf dem Mojang-Konto zu ändern geht
+  ausschließlich über die Session-API mit einem angemeldeten Microsoft-Konto -
+  `skins:setActive` bleibt deshalb bewusst abgelehnt. Ohne das anzumeldende
+  Konto gibt es keinen Weg, und einen zu erfinden wäre eine Lüge in der
+  Oberfläche.
+- **Verifiziert.** 15 Prüfungen in `test-skin-ganzkoerper.js` (reines Node):
+  dass Kopf-Dialog, -Würfel und Kopfbild entfernt sind, dass das Feld der
+  Seitenleiste direkt die Ganzkörper-Ansicht öffnet, dass Auswahl, Entfernen und
+  Meldung dort sitzen, die sechs Teile der zweiten Ebene samt Texturkoordinaten,
+  die durchsichtige Grundfläche und das Erkennen des alten 64×32-Formats.
+
+### Kleine Korrekturen aus der Ideen-Liste
+
+Die erste Runde der Ideen-Liste betraf Fehler und Kleinigkeiten. Jede ist
+einzeln umgesetzt und einzeln abgesichert:
+
+- **Mod-Installation bleibt nicht mehr auf „Lädt …" hängen.** Der Knopf im
+  Suchergebnis wurde nach einem erfolgreichen Download nie zurückgesetzt — die
+  Mod lag bereits im `mods`-Ordner, der Knopf zeigte aber weiter den
+  Ladezustand. Er zeigt jetzt „Installiert" (neuer Schlüssel
+  `mod_installed_btn` in allen neun Sprachen); im Fehlerfall wird er sofort
+  wieder freigegeben, statt zwei Sekunden gesperrt zu bleiben.
+- **Installierte Mods zeigen ihr Projektbild.** `downloadModForInstance` legt
+  `iconUrl` (Modrinths `icon_url`) in `mods-meta.json` ab; die Liste der
+  installierten Mods benutzt dasselbe `modIconHtml` wie die Suche. Von Hand
+  hineingelegte `.jar`-Dateien ohne Metadaten behalten das allgemeine Symbol.
+- **Ressourcenpakete zeigen `pack.png`** als Vorschau (Details im Abschnitt
+  *Ressourcenpakete einfügen und entfernen*).
+- **Konten tragen ihren Minecraft-Kopf** statt eines Emoji-Smileys: zuerst die
+  rohe Skin-PNG (auf die Vorderseite zugeschnitten), sonst das fertig
+  gerenderte Kopfbild, sonst der Smiley als Rückfall.
+- **Der Schalter ist aus = grau, an = farbig.** Der Zustand war schon vorher
+  semantisch richtig, aber der fast weiße Griff ließ „aus" wie eine schwache
+  Aktivierung aussehen. Jetzt: matte graue Spur mit Innenlicht gegen eine
+  leuchtende Akzent-Spur mit Glanzkante.
+- **Microsoft-Login-Karte aus den Einstellungen entfernt** (Details im
+  Abschnitt *Einstellungen*).
+- **Die helle „Leiste" über der Einstellungs-Suche** war der klebende Kopf mit
+  hellem Verlauf; er ist jetzt ein dunkler, weich verlaufender Blur, und das
+  Suchfeld selbst ist ohne Fokus unsichtbar.
+- **Modpack-Auswahl heißt „Entfernen" statt „Löschen"** (in allen neun
+  Sprachen). Das Verhalten bleibt endgültig — die Beschriftung verspricht nur
+  nicht mehr fälschlich ein bloßes Herausnehmen.
+- **Die Startoptionen sind in die Einstellungen gewandert.** Der eigene
+  Seitenleisten-Punkt „Startoptionen" ist weg; RAM und Fenstergröße der
+  gewählten Instanz stehen jetzt als vierte Karte in den Einstellungen. Die
+  Feld-IDs sind unverändert geblieben, damit die bewährte Speicherlogik
+  (500 ms nach der letzten Eingabe, Prüfung im Haupt-Prozess) ohne Umbau
+  weiterläuft.
+- **Widgets übersetzen sich mit.** Titel und Beschreibung in `widget.json`
+  dürfen jetzt je Sprache angegeben werden, und die Kacheln bekommen ihre
+  Beschriftungen über die `daten`-Nachricht (Details im Abschnitt *Widgets auf
+  der Startseite*).
+
+**Verifiziert.** 75 Prüfungen in `test-ideen-fixes.js` (statisch gegen die
+ausgelieferten Dateien, inkl. der Einstellungskarten, des entfernten
+Startoptionen-Punkts, der Widget-Sprachschlüssel, der gestaffelten
+Kachel-Einblendung und des Schnellzugriffs samt Screenshot) und 6 neue
+Prüfungen in `test-ressourcenpakete.js` für das `pack.png`-Vorschaubild.
+
+### Die weiße Leiste im Modpack-Dialog
+
+Beim Ausklappen der Versionsliste in *Neues Modpack* war die Optionsliste weiß
+auf weiß: das Popup eines nativen `<select>` zeichnet Chromium/Windows mit
+weißem Systemhintergrund, während die Optionstexte über das eigene Stylesheet
+weiß waren. Gemessen an 60 echten Versionen aus dem Mojang-Manifest:
+Optionstext `rgb(255,255,255)` auf `rgb(22,50,63)` nach dem Fix. Dazu kam ein
+Ladezustand („Lade Versionen …") und ein Leerzustand: eine leere Liste wird
+**nicht** gespeichert, damit ein einmaliger Netzfehler beim nächsten Öffnen
+erneut lädt statt dauerhaft leer zu bleiben.
 
 ### Bewegen beim Überfahren
 
@@ -548,20 +760,26 @@ Buttons in der Seitenleiste, nur schwächer.
 | Karten und Zeilen (neu) | 0.16, bis 5px | keine |
 
 Erfasst sind `.world-card`, `.mod-row` (Accounts), `.srv-row` (Server),
-`.stat-tile`, `.lang-row`, `.hero` und `.profile-card`.
+`.stat-tile` und `.lang-row`.
 
-Alle sieben reagieren auf Überfahren, aber **nicht alle sieben bewegen sich**:
+Nicht alle Karten bewegen sich — manche reagieren nur sichtbar:
 
 | | reagiert sichtbar | bewegt sich mit |
 |---|---|---|
-| `.hero`, `.profile-card` | ja | ja |
 | `.world-card`, `.mod-row`, `.srv-row`, `.stat-tile`, `.lang-row` | ja | ja |
-| `.stat-card`, `.shortcut-card`, `.settings-karte`, `.glass`, `.we-card`, `.opts-card` | ja | **nein** |
+| `.hero`, `.profile-card`, `.stat-card`, `.shortcut-card`, `.settings-karte`, `.glass`, `.we-card`, `.opts-card` | ja | **nein** |
 
-Die dritte Zeile bekommt nur die Optik (Rahmen, Schatten, Anhebung) — ein
+Die zweite Zeile bekommt nur die Optik (Rahmen, Schatten, Anhebung) — ein
 wandernder Block ohne eigenen Klick-Handler sieht nach kaputtem Layout aus.
 `.stat-card` ist außerdem der *Container* über der Kachelreihe; läge der
 Selektor dort, wanderte die ganze Karte samt Überschrift mit.
+
+`.hero` und `.profile-card` sind aus der Bewegung wieder herausgenommen worden:
+Beide sind große, ruhige Flächen, und ein langsames Nachwandern großer Blöcke
+lenkt mehr ab, als es Leben in die Oberfläche bringt. Sie heben sich beim
+Überfahren weiterhin leicht an (CSS), folgen dem Zeiger aber nicht mehr —
+`HOVER_SELECTOR` führt sie nicht. `test-hover-move.js` misst das an beiden
+Karten als „bleibt still".
 
 **Bewusst nicht erfasst:** die frühere Newskarte ist inzwischen der
 Schnellzugriff (siehe unten), und `.settings-row` sind reine Beschriftungszeilen.
@@ -601,20 +819,33 @@ Augen — gemessen ist die Geometrie, nicht das Aussehen.
 
 ### Einstellungen
 
-Die Ansicht *Einstellungen* ist von einer langen Liste von Zeilen zu fünf
-Karten in zwei Spalten umgebaut worden. Die Microsoft-Login-Karte steht
-darunter über die volle Breite, weil dort Text steht und keine Auswahl.
+Die Ansicht *Einstellungen* ist von einer langen Liste von Zeilen zu vier
+Karten umgebaut worden, in **einer einzigen Spalte**. Ein zweispaltiges Raster
+wurde verworfen: bei der vorgegebenen Breite rutschten die Karten in drei
+Spalten und die Zuordnung wurde unübersichtlich — eine Spalte liest sich von
+oben nach unten, ohne dass das Auge zwischen Spalten springt.
 
 | Karte | Inhalt |
 |---|---|
 | **Darstellung** | Sprache, Schrift, Textgröße, eigene Schriftdatei, „Weniger Bewegung" |
 | **Karten-Layout** | Raster der Startseite ansehen und anordnen |
-| **Fenster** | Breite, Höhe, Position, zentrieren, zurücksetzen |
 | **Widgets** | Widgets hinzufügen |
-| **Microsoft-Login** | Status, Client-ID, anmelden/abmelden (über beide Spalten) |
+| **Startoptionen** | RAM und Fenstergröße der gewählten Instanz |
+
+Die frühere Karte **Microsoft-Login** (Eingabefeld, „Entfernen"-Knopf,
+aufklappbare Azure-Anleitung) ist entfernt: Sie war die einzige Karte mit freiem
+Text, ein Fremdkörper im Raster aus Auswahl-Elementen, und das Feld wurde nur
+einmal beim Einrichten gebraucht. Die Client-ID wird jetzt über
+`setup-client-id.js`, `config.json` oder `LIQUID_LAUNCHER_CLIENT_ID` gesetzt;
+fehlt sie, nennt der Login-Dialog den Portalweg selbst.
+
+Die frühere Karte **Fenster** (Breite, Höhe, Position, zentrieren,
+zurücksetzen) ist ebenfalls entfernt. Die Fenstergröße stellt man am
+Fensterrahmen ein, und ein Formular dafür war eine zweite, konkurrierende Stelle
+für dieselbe Sache.
 
 Ganz oben steht ein **Suchfeld**. Es findet nicht nur den sichtbaren Text,
-sondern die Übersetzungen aller vier Sprachen: Wer auf Deutsch „schrift"
+sondern die Übersetzungen aller Sprachen: Wer auf Deutsch „schrift"
 eintippt, findet die Karte auch dann, wenn die Oberfläche gerade auf Englisch
 steht. Grundlage ist der Textinhalt der Karte plus alle Werte, die hinter
 `data-i18n` stehen — deshalb ist der Treffer über die Sprachumschaltung hinweg
@@ -678,13 +909,50 @@ unterwegs ist, hält sonst mitten in der Bewegung an.
 #### Schnellzugriff statt Newskarte
 
 Die Newskarte war statischer Text ohne Klick-Handler. Sie ist durch eine
-Schnellzugriff-Karte ersetzt: **Welten**, **Mods**, **Server**,
-**Einstellungen**. Ein Klick darauf wechselt die Ansicht und setzt den
-Eintrag in der Seitenleiste entsprechend. Der Kartenblock heißt im gespeicherten
-Layout jetzt `shortcut` statt `news`; alte `settings.json` werden beim Start
-übernommen (`layoutUebernehmen()`).
+Schnellzugriff-Karte ersetzt. Dort steht jetzt **jedes** Ziel der Seitenleiste —
+**Welten**, **Mods**, **Ressourcenpakete**, **Server**, **Account**,
+**Einstellungen** — plus zwei Aktionen, die es sonst nur versteckt gibt. Ein
+Klick auf ein Ziel wechselt die Ansicht und setzt den Eintrag in der
+Seitenleiste entsprechend. Der Kartenblock heißt im gespeicherten Layout jetzt
+`shortcut` statt `news`; alte `settings.json` werden beim Start übernommen
+(`layoutUebernehmen()`).
 
-#### Zwei Fehler, die erst der Fenster-Test gefunden hat
+Weil acht Kacheln nicht mehr in eine Kartenhöhe passen, rollt die Karte
+(`overflow-y:auto`), wenn das Fenster klein ist.
+
+##### Screenshot und Design als Kachel
+
+- **Design ändern** öffnet dasselbe Panel wie das Symbol unten links. Dabei
+  stoppt der Klick die Weitergabe (`stopPropagation`): der globale
+  Dokument-Klick schließt ein offenes Panel, sobald der Klick außerhalb liegt —
+  ohne den Stopp würde das gerade geöffnete Panel im selben Klick wieder
+  zugemacht.
+- **Screenshot** ruft einen neuen Kanal `screenshot:capture`. Der Hauptprozess
+  zeichnet das Fenster (`webContents.capturePage`) und legt das PNG unter
+  `%APPDATA%\Liquid Launcher\screenshots\` ab; der Renderer bekommt **nur den
+  Dateinamen** zurück, kein `fs` und keine Bytes. Schlägt die Aufnahme fehl,
+  antwortet der Kanal mit `{ ok:false, fehler }` statt zu werfen — die
+  Statuszeile in der Karte zeigt dann die Meldung statt still zu bleiben. Ein
+  zweiter Kanal `screenshot:openFolder` öffnet den Ordner.
+
+#### Seitenleiste als eigene Spur
+
+Die Seitenleiste ist keine Rasterspalte mehr, sondern eine eigene schmale Spur
+(72 px) **neben** dem unveränderten 6×4-Kartenraster. Sie lässt sich in
+*Einstellungen → Karten-Layout* an alle vier Kanten andocken (links, rechts,
+oben, unten) — ohne dass dafür eine Karte angefasst werden muss. Die
+gespeicherten Koordinaten bleiben 1..6 / 1..4; `gridVersatz()` rechnet beim
+Anzeigen den Versatz zur Spur um. Ein Layout aus Version 1 (Leiste als
+Rasterspalte/-zeile eins) wird beim Start automatisch zurückgeschoben
+(`layoutUebernehmen()`).
+
+Beim Umgruppieren im Editor wird ein Zug **nie abgelehnt**: Stößt eine Karte
+gegen eine Nachbarin, weicht die in den nächsten freien Platz ihrer Größe aus
+und schrumpft nur, wenn sonst nichts passt (`naechsteFreie()`, `ausweichen()`,
+`spanBegrenzen()`). Das Umräumen animiert leicht (0,35 s auf
+`grid-column`/`grid-row` für die echten Karten).
+
+#### Drei Fehler, die erst der Fenster-Test gefunden hat
 
 1. **`syncLayout()` hat gespeichert.** Die Funktion wird beim Start und bei
    jedem einzelnen Mauspixel eines Zuges aufgerufen. Beim ersten Aufruf hat
@@ -698,9 +966,15 @@ Layout jetzt `shortcut` statt `news`; alte `settings.json` werden beim Start
    schreibt nicht mehr Hunderte Dateien.
 2. **Ein abgebrochener `mouseover` ließ die Karte weiterlaufen.** Siehe
    *Bewegen beim Überfahren*, Punkt 4.
+3. **Die Einstellungen lagen unter der Seitenleisten-Spur.** Nach dem Umbau
+   deckte das Ansichts-Overlay die ganze Fläche inklusive der 72-px-Spur ab;
+   die Einstellungskarten standen bei 1400-px-Fensterbreite in drei Spalten.
+   Jetzt liegt die Ansicht neben der Spur (`kartenbereichRect()`), und das
+   Raster steht in einer einzigen Spalte — dieselbe Breite bei jeder
+   Fenstergröße, kein Umbrechen zwischen Spalten.
 
-**Verifiziert.** 146 Prüfungen in `test-einstellungen.js` (statisch, prüft die
-ausgelieferte Datei) und 111 Prüfungen in `test-einstellungen-fenster.js` im
+**Verifiziert.** 145 Prüfungen in `test-einstellungen.js` (statisch, prüft die
+ausgelieferte Datei) und 204 Prüfungen in `test-einstellungen-fenster.js` im
 echten Electron-Fenster mit 1400×900, echtem `preload` und echter `index.html`.
 Im Fenster gemessen: der Einstellungsbereich ist 1595 px hoch bei 664 px
 sichtbar, also wirklich rollbar; die Schrift wird als `--font-ui`
@@ -721,9 +995,140 @@ Entfernen** auf der Startseite über „Anpassen" oben auf der Kachelreihe (zieh
 und `×`). Beides steht an zwei Stellen, weil beides verschiedene Fragen sind:
 *welche* Kacheln es gibt, ist eine Einstellung, *wie sie aussehen* ist_layout_.
 
-Mitgeliefert werden `uhr`, `welten`, `mods` und `laufzeit` — alle vier zeigen
-echte Werte. Die vollständige Anleitung zum Schreiben eigener Widgets steht in
-**[WIDGETS.md](WIDGETS.md)**.
+Mitgeliefert werden 24 Widgets. Neben den vier Grundkacheln (`uhr`, `datum`,
+`welten`, `mods`) gibt es Kacheln fuer `laufzeit`, `instanzen`,
+`instanz-version`, `instanz-ram`, CPU (`cpu-info`, `cpu-auslastung`),
+`ram`, `laufwerk`, `netzwerk`, `java`, `launcher-version`, `spiel-prozess`,
+`system-info`, `system-laufzeit`, `letzter-start`, `server-status`, `packs`,
+`welten` und die drei Ordnergroessen (`speicher-instanz`, `speicher-mods`,
+`speicher-welten`). **Alle zeigen echte, gemessene Werte** (Details unter
+*System- und Instanz-Kacheln*). Die vollstaendige Anleitung zum Schreiben
+eigener Widgets steht in **[WIDGETS.md](WIDGETS.md)**.
+
+#### Widgets sprechen die eingestellte Sprache
+
+Ein Widget besteht aus zwei Teilen, die beide übersetzt werden müssen: dem
+**Manifest** (Titel und Beschreibung in der Verwaltung) und dem **Inhalt** der
+Kachel. Beide Wege sind gebaut:
+
+- In `widget.json` dürfen `titel` und `beschreibung` entweder ein einzelner
+  String sein (wie bisher) **oder** ein Objekt je Sprache (`de`, `en`, `es`,
+  `fr`, `pt`, `it`, `pl`, `tr`, `ru`, z. B.
+  `{ "de": "Welten", "en": "Worlds", "es": "Mundos", "fr": "Mondes", … }`). Der
+  Hauptprozess löst den Text in `widgets.js` (`SPRACHEN`) nach
+  `settingsStore.language` auf; fehlt die gewählte Sprache, greift Deutsch.
+- Die Kacheln bekommen die Oberflächentexte über die `daten`-Nachricht: der
+  Renderer baut aus den 56 `widget_*`-Schlüsseln einen `texte`-Block
+  (`window.__wdgTexte`) und reicht ihn an `WidgetHost.setzeTexte()`. Der Host
+  hängt ihn an jede `daten`-Nachricht an. Die Kachel-Skripte lesen `d.texte`
+  und fallen ohne ihn auf ihren eingebauten deutschen Text zurück — ältere oder
+  fremde Widgets funktionieren also unverändert.
+
+Beim Umschalten der Sprache werden sowohl die Kacheln als auch die Widget-Liste
+in den Einstellungen neu gezeichnet. Bewusst **deutsch als Rückfall**: eine
+fehlende Übersetzung darf keine leere Kachel erzeugen.
+
+#### Neun Sprachen
+
+Die Oberfläche spricht **neun Sprachen**: Deutsch, Englisch, Spanisch,
+Französisch, Portugiesisch, Italienisch, Polnisch, Türkisch und Russisch. Alle
+stehen als Blöcke in `TRANSLATIONS` (`index.html`) und tragen dieselben **273**
+Schlüssel; `test-einstellungen.js` wertet das Objekt in einem frischen
+`vm`-Kontext aus und vergleicht die Schlüsselmengen, statt sie mit einem Regex
+zu raten. Die Knopfreihe in den Einstellungen entsteht datengetrieben aus
+`LANGUAGE_NAMES` — eine neue Sprache braucht dort nur einen Eintrag, keinen
+neuen Knopf-Code. `SPRACHEN` in `widgets.js` führt dieselben Codes, damit auch
+Widget-Titel und -Beschreibungen mitwechseln.
+
+Der deutsche Block ist die **Quelle**: fehlt in einer Sprache ein Schlüssel,
+liefert `t()` den deutschen Text (und im Notfall den Schlüsselnamen) statt einer
+leeren Zeile. Die Widget-Inhalte fallen ebenso auf Deutsch zurück, wenn ein
+älteres Widget keinen `d.texte`-Block kennt.
+
+#### System- und Instanz-Kacheln (Phase D4)
+
+Aus vier Kacheln wurden 24. Alle neuen liegen im selben Projektordner
+`widgets/` als Ordner mit `widget.json` + `widget.html` und werden über
+denselben Mechanismus gefunden wie die alten. Hinzugekommen sind:
+
+| Kachel | Angezeigter Wert |
+|---|---|
+| `cpu-info` | CPU-Kerne und Takt |
+| `cpu-auslastung` | Auslastung in Prozent |
+| `ram` | belegter / gesamter Arbeitsspeicher, dazu frei |
+| `laufwerk` | freier Platz des Datenträgers mit den Welten (von gesamt) |
+| `netzwerk` | Anzahl IPv4-Schnittstellen nach außen, dazu ihre Namen |
+| `java` | benötigte Java-Version, dazu gefunden/„wird ermittelt"/„keine" |
+| `launcher-version` | Version aus `package.json` |
+| `spiel-prozess` | läuft ein Spiel, wie lange |
+| `system-info` | Betriebssystem-Familie |
+| `system-laufzeit` | wie lange der Rechner schon läuft |
+| `instanz-version` | aktive Instanz und ihre Minecraft-Version |
+| `instanz-ram` | RAM-Bereich der aktiven Instanz (`min–max GB`) |
+| `instanzen` | Anzahl Instanzen, dazu die aktive |
+| `letzter-start` | zuletzt gespielt („gerade eben"/„vor N Std."/„noch nie") |
+| `server-status` | Anzahl Server, dazu „N online" |
+| `packs` | Anzahl Ressourcenpakete |
+| `speicher-instanz`, `speicher-mods`, `speicher-welten` | rekursiv gezählte Ordnergröße |
+| `uhr`, `datum`, `welten`, `mods` | unverändert (die vier früheren) |
+
+**Ein eigenes, reines Messmodul.** `src/main/systemdaten.js` misst die Werte und
+braucht dafür kein `require('electron')` — dieselbe Regel wie `widgets.js` und
+`app-path.js`, damit der Test unter reinem Node läuft. Der Hauptprozess gibt
+die Pfade hinein, die er sonst aus `app` hätte.
+
+**Nur gemessen, nichts geschätzt.** Jedes Feld ist eine Zahl aus einer echten
+Quelle: `os.cpus()` zählt Takte, `os.freemem()` Bytes, `statfsSync` Blöcke,
+`readdirSync` Dateien. **Eine CPU-Temperatur fehlt deshalb bewusst**: unter
+Windows lässt sie sich ohne Zusatztreiber nicht auslesen, und „irgendein Wert"
+wäre eine Lüge in einer Kachel, die vorgibt, gemessen zu haben. Lieber eine
+Kachel ohne Wert als eine mit erfundenem.
+
+**Die CPU-Auslastung braucht zwei Messpunkte.** `os.cpus()` liefert kumulative
+Zeiten seit dem Boot; aus einem einzelnen Messpunkt folgt keine Auslastung. Das
+Modul hält deshalb den letzten Messpunkt und liefert beim **ersten** Aufruf
+`null` — „noch keine Angabe" statt einer Zahl, die aus nichts folgt. Erst der
+zweite Aufruf nennt einen Prozentwert. `berechneAuslastung` ist eine reine
+Funktion und einzeln geprüft.
+
+**Zwei Kanäle, zwei Taktungen.** Leichte, schnell veraltende Werte (System, CPU,
+Laufwerk, laufende Spiel-Prozesse) kommen über den eigenen Kanal
+`widgets:systemdaten`; der Renderer
+fragt ihn alle **4 s** ab (`widget-host.js`, `datenFrisch`) und lässt den Takt
+aus, solange das Fenster im Hintergrund liegt (`document.hidden`). Schwere Werte
+— die drei rekursiven Ordnergrößen — hängen weiterhin nur am vollen Koffer
+`widgets:daten`. Ein 4-Sekunden-Takt, der jedes Mal durch `saves/`, `mods/` und
+den Instanzordner wandert, wären tausende `stat`-Aufrufe pro Minute für Zahlen,
+die sich kaum ändern.
+
+**Die Positivliste wuchs von sieben auf 18 Felder** (`ERLAUBTE_DATENFELDER` in
+`widgets.js`). Jedes neue Feld ist eine Zahl, ein Byte-Wert oder ein kleines
+Objekt daraus — **nie ein Pfad und nie ein Benutzername**. Ein Pfad in einem
+Kachel-Feld wäre ein Lesekanal in einen sandboxed Frame, den es nicht braucht.
+Der Test prüft das am Ergebnis: in den Ausgaben steht kein `AppData` und kein
+Laufwerksbuchstabe.
+
+#### Die Kacheln kommen gestaffelt ins Bild
+
+Vorher erschienen alle Kacheln im selben Frame. Jetzt bekommt jede von
+`widget-host.js` eine laufende Nummer (`--wdg-i`), und das CSS verschiebt den
+Anfang ihrer Einblendung um `--wdg-i * 55 ms`. Die Kacheln laufen so von links
+oben nach rechts unten auf, statt auf einmal da zu sein.
+
+Beim Zurückwechseln auf die Startseite läuft die Einblendung erneut
+(`onViewChanged('play')` → `WidgetHost.kachelnAnimieren()`). Der Host entfernt
+die Klasse `wdg-auf`, erzwingt einen Reflow über `offsetWidth` und setzt sie
+zurück — ohne den Reflow fasst der Browser beides in einem Frame zusammen und
+nichts passiert. Im **Bearbeiten-Modus bleibt sie aus**: sonst hüpft das Raster
+bei jeder Umsortierung neu auf.
+
+**Ein Detail, das leicht schiefgeht:** `animation-fill-mode` ist `backwards`,
+nicht `both`. Mit `both` bliebe der Endzustand der Animation stehen und würde
+das Inline-`transform` der Hover-Bewegung dauerhaft überschreiben — die Kacheln
+würden sich nicht mehr unter dem Zeiger bewegen. Mit `backwards` zeigt die
+Kachel während der Verzögerung ihren Startzustand und gibt danach die Kontrolle
+an die Hover-Bewegung zurück. „Weniger Bewegung" und die Systemeinstellung
+`prefers-reduced-motion` schalten die Einblendung ganz ab.
 
 #### Die vier früheren Kacheln zeigten erfundene Zahlen
 
@@ -760,7 +1165,8 @@ Drei Regeln, die nicht verhandelbar sind:
 2. **Eine Positivliste der Datenfelder**, im Hauptprozess, nicht im Renderer.
    Der Renderer hält nach einem Login das Konto-Objekt; baut er den Datenkoffer
    selbst, landet das Token in einer Struktur, die ausschließlich zum Weiterreichen
-   gedacht ist. Die Liste hat genau sieben Felder, und ein später ergänztes
+   gedacht ist. Die Liste hat genau 18 Felder (vorher sieben; D4 hat elf
+   ergänzt), und ein später ergänztes
    Datenfeld geht nicht automatisch mit.
 3. **Der Absender wird über `event.source` geprüft, nicht über `event.origin`.**
    Ein Frame mit undurchsichtiger Herkunft hat `origin` `"null"` — eine
@@ -810,11 +1216,18 @@ und echte `saves`-Ordner enthalten.
    eigene Nachricht aus den CSS-Variablen des Fensters, die stimmen auch nach
    einem Farbwechsel.
 
-**Verifiziert.** 96 Prüfungen in `test-widgets.js` (Suche, Manifest, Pfad-
-Traversal, Positivliste), 58 in `test-widget-anzeige.js` (was die Kacheln
-tatsächlich anzeigen — die Widget-Skripte werden mit fester Uhrzeit in einer
-Sandbox laufen gelassen und das Ergebnis geprüft), 63 in
-`test-widgets-fenster.js` (echtes Fenster).
+**Verifiziert.** 135 Prüfungen in `test-widgets.js` (Suche, Manifest inkl.
+Sprachobjekt, Pfad-Traversal, Positivliste mit 18 Feldern), **81** in
+`test-widget-systemdaten.js` (reines Node: die CPU-Auslastung aus zwei
+Messpunkten, der erste Wert `null`, Ordnergröße und Eintragszahl mit und ohne
+Ordner, die Byte-Felder ohne Pfad), 278 in `test-widget-anzeige.js` (was
+die Kacheln tatsächlich anzeigen — die Widget-Skripte werden mit fester Uhrzeit
+in einer Sandbox laufen gelassen; die D4-Gruppen prüfen jede neue Kachel mit
+echten Daten und die „ohne Daten wird nicht geraten"-Fälle; die letzte Gruppe
+prüft, dass sie `d.texte`
+benutzen und ohne ihn deutsch bleiben), 72 in `test-widgets-fenster.js` (echtes
+Fenster; die letzte Gruppe prüft die gestaffelte Einblendung über den
+berechneten Stil).
 
 **Nicht verifiziert:** das Aussehen. Screenshots wurden erzeugt, aber nicht mit
 Augen geprüft — die Kachelhöhe von 92 px, die Raster-Umbrüche und das
@@ -833,6 +1246,7 @@ Skripte, die ohne Electron-Fenster laufen und daher schnell Fehler finden:
 
 ```bash
 node test-launch-chain.js 1.21.4   # Argument-Kette + Client-JAR (~27 MB)
+node test-fabric-loader.js         # Fabric: Maven-Libraries, Verschmelzen, Classpath (63 Prüfungen)
 node test-java-runtime.js          # Java-Erkennung
 node test-ipc-wiring.js            # lädt main.js/ipc-handlers.js mit Fake-Electron
 node test-account-store.js         # Token-Verschlüsselung, ohne echten Account
@@ -840,17 +1254,44 @@ node test-auth-errors.js           # Login-Fehler werden verständlich übersetz
 node test-worlds.js                # NBT-Leser, Welt-Metadaten, Löschschutz (94 Prüfungen)
 node test-server-ping.js           # Server-Ping, MOTD, Favicons (206 Prüfungen)
 node test-instance-settings.js     # RAM-/Auflösungs-Prüfung, Grenzfälle (185 Prüfungen)
+node test-instances.js             # Modpack-Speicher auf der Platte (85 Prüfungen)
+node test-modpack-import.js        # Modpack-Dateien: Formate, Zip-Slip, Loader (140 Prüfungen)
+node test-modpack-import-formate.js # neue Import-Faelle: Wurzelordner, Prism/MultiMC, CurseForge ohne Schluessel (18 Prüfungen)
+node test-ressourcenpakete.js      # Ressourcenpakete: Ordner, pack.mcmeta, options.txt, pack.png (131 Prüfungen)
+node test-ideen-fixes.js           # Ideen-Liste: Mod-Knopf, Konto-Symbol, Schalter, Microsoft-Karte, Startoptionen, Widget-Sprache, Kachel-Einblendung, Schnellzugriff, neun Sprachen (139)
+node test-prozess-stoppen.js        # Beenden ist kein Absturz (19, braucht Java 11+)
 node test-hover-move.js             # Hover-Bewegung der Karten (29 Prüfungen)
-node test-einstellungen.js          # Einstellungen, Suche, Schrift (146 Prüfungen)
+node test-einstellungen.js          # Einstellungen, Suche, Schrift, Paritaet neun Sprachen (198 Prüfungen)
 node test-snippets.js               # die injizierten Snippets sind gültiges JS (46)
-node test-widgets.js                # Widget-Suche, Manifest, Positivliste (96 Prüfungen)
-node test-widget-anzeige.js         # was die Kacheln wirklich anzeigen (58 Prüfungen)
+node test-widgets.js                # Widget-Suche, Manifest, Positivliste (135 Prüfungen)
+node test-widget-systemdaten.js     # System-/Dateiwerte der D4-Kacheln (81 Prüfungen)
+node test-widget-anzeige.js         # was die Kacheln wirklich anzeigen (278 Prüfungen)
 node test-ms-registration.js        # Azure-Registrierung gegen Microsoft prüfen (Netz)
 npx electron test-auth.js           # echter Login, isoliert (öffnet ein Fenster)
 node test-full-launch.js 1.21.4 60  # echter Start, ohne UI (ca. 500 MB beim ersten Mal)
-node_modules\electron\dist\electron.exe test-widgets-fenster.js      # echtes Fenster (63)
-node_modules\electron\dist\electron.exe test-einstellungen-fenster.js # echtes Fenster (111)
+node_modules\electron\dist\electron.exe test-widgets-fenster.js      # echtes Fenster (72)
+node_modules\electron\dist\electron.exe test-einstellungen-fenster.js # echtes Fenster (205)
+node_modules\electron\dist\electron.exe test-schnellzugriff-fenster.js # echtes Fenster: Kacheln, Design-Panel, Screenshot-Kanal (18)
+node_modules\electron\dist\electron.exe test-modpacks-fenster.js      # echtes Fenster (74)
+node_modules\electron\dist\electron.exe test-modpack-import-fenster.js # echtes Fenster: Import-Dialog, Suche, 4 Sprachen (57)
+node_modules\electron\dist\electron.exe test-ressourcenpakete-fenster.js # echtes Fenster: Ansicht, Schalter, Loeschen (63)
+node test-skin-ganzkoerper.js       # Skin ohne Kopfanzeige: Ganzkoerper, zweite Ebene (15 Prüfungen)
 ```
+
+`test-modpacks-fenster.js` heißt mit dem Zusatz `-fenster`, weil ein Test ohne
+das echte Fenster unter `node` zwar startet, aber nichts prüft: er braucht ein
+`BrowserWindow` und antwortet auf `instances:*` mit dem echten `instances.js` auf
+einem eigenen `userData`. Es ist deshalb kein Nachbau der Speicherlogik, sondern
+die Oberfläche gegen die echte.
+
+`test-prozess-stoppen.js` startet keine 500 MB, sondern eine winzige
+`.java`-Datei als Ersatz für das Spiel. Das ist kein Test über eine nachgebaute
+Logik: `process.js` läuft unverändert, gespawnt wird wirklich, der Abschluss- und
+der Stopp-Zweig wirklich. Nur das Spiel ist ein Ersatz — nötig, weil sich der
+Fehler genau dort zeigt, wo ein Prozess mit *unklarem* Exit-Code endet, nachdem
+jemand *Beenden* geklickt hat, und ein echter Rundlauf diese Kombination selten
+liefert. Fehlt ein startbares Java, meldet der Test das als Fehlschlag, nicht als
+Bestand.
 
 `test-widgets-fenster.js` und `test-einstellungen-fenster.js` brauchen das
 `electron.exe` aus `node_modules` direkt und nicht `npx electron` — sie setzen
@@ -1130,8 +1571,8 @@ lässt**, und das sollte vor der Anmeldung klar sein:
    und das Programm beigetreten.
 
 **Was das für dieses Projekt heißt:** Die Kette ist danach vollständig. Die neue
-bzw. freigeschaltete Client-ID wird im Launcher unter *Einstellungen →
-Microsoft-Login* eingetragen und gespeichert; am Code ändert sich nichts. Ob die
+bzw. freigeschaltete Client-ID wird im Launcher über `setup-client-id.js` bzw.
+`config.json` hinterlegt und gespeichert; am Code ändert sich nichts. Ob die
 Freischaltung tatsächlich angekommen ist, zeigt erst ein Anmeldeversuch — der
 Autorisierungs-Endpunkt sieht vorher und nachher gleich aus.
 
@@ -1289,22 +1730,38 @@ und die macOS-Argument-Prüfung.
   Eigenbau-Launcher. Die vollständigen Schritte und die Stelle, an der private
   Projekte typischerweise hängen bleiben, stehen unter
   *Weg 1: Xbox Developer Program (ID@xbox)*.
-  Am Code ändert sich dafür nichts: die freigeschaltete Client-ID wird unter
-  *Einstellungen → Microsoft-Login* eingetragen, und `Registrierung pruefen.bat`
+  Am Code ändert sich dafür nichts: die freigeschaltete Client-ID wird über
+  `setup-client-id.js` bzw. `config.json` hinterlegt, und `Registrierung pruefen.bat`
   prüft in zwei Sekunden, ob sie überhaupt akzeptiert wird.
   Bis dahin startet das Spiel, bleibt aber im Titelbildschirm: jede Welt lädt
   eine Session, und die braucht ein Token. **Das ist kein Bug im Startcode.**
-- **Modloader.** Gestartet wird Vanilla. `talberg` (Fabric) und `create-ab`
-  (Forge) starten ebenfalls, aber ohne geladenen Modloader — Mods im
-  `mods`-Ordner bleiben ohne Wirkung. Das Log sagt das beim Start auch deutlich.
-- **Ressourcenpakete** (Sidebar-Eintrag, ebenfalls ohne Funktion) — war laut
-  Auftrag nicht Teil des Scopes.
+- **Modloader: Fabric ist verdrahtet, Forge nicht.** Eine Instanz mit
+  `modloader: "fabric"` startet mit echtem Fabric Loader: der Launcher holt das
+  Profil von `meta.fabricmc.net` (Version aus der Instanz, sonst die neueste
+  stabile — und merkt sie sich in der `instance.json`), lädt die
+  Loader-Libraries und startet über
+  `net.fabricmc.loader.impl.launch.knot.KnotClient`. Damit wirken die Mods im
+  `mods`-Ordner. Der Weg ist in `src/main/fabricLoader.js` gekapselt und in
+  `test-fabric-loader.js` (63 Prüfungen) abgesichert. **Forge bleibt offen:**
+  eine Forge-Instanz startet weiter als Vanilla, mit demselben ehrlichen
+  Hinweis im Log. Der Modpack-Import lehnt Packs mit `quilt` oder `neoforge`
+  schon beim Import ab.
+- **Ressourcenpakete sind gebaut.** Die Ansicht listet den `resourcepacks`-Ordner
+  der gewählten Instanz, der Schalter schreibt die `resourcePacks`-Zeile in
+  `<instanz>/options.txt` (nur diese eine Zeile — der Rest der Datei bleibt
+  unangetastet), `pack.mcmeta` wird aus `.zip` und entpackten Ordnern gelesen,
+  und ein Import kommt sowohl über die Ansicht (eigene `.zip`) als auch über
+  Modpack-Dateien (`adm-zip`). Jedes Paket zeigt sein `pack.png` als Vorschau,
+  sofern vorhanden. Verifiziert in `test-ressourcenpakete.js` (131 Prüfungen)
+  und `test-ressourcenpakete-fenster.js` im echten Fenster (63 Prüfungen).
 - **Start-Log.** Die Log-Zeilen gehen ans UI (dort landen sie in der
   DevTools-Konsole) und zusätzlich nach
   `%APPDATA%/Liquid Launcher/logs/launch.log`, damit ein Absturz nach dem
   Schließen des Fensters nachvollziehbar bleibt. Ein echtes Log-Panel im UI
   gibt es noch nicht.
-- **Fremde Modloader.** Wie oben: Vanilla ist verdrahtet, Fabric/Forge nicht.
+- **Fremde Modloader.** Fabric ist verdrahtet (siehe oben), **Forge nicht**: eine
+  Forge-Instanz startet als Vanilla, Mods im `mods`-Ordner bleiben dort ohne
+  Wirkung, und das Log sagt das beim Start.
 - **Spielzeit-Kachel.** Es gibt sie nicht mehr. Eine echte Spielzeit müsste der
   Launcher bei jedem Start *und* Beenden mitschreiben — das ist nicht gebaut.
   Bis dahin steht dort nichts, statt einer Zahl ohne Quelle.
@@ -1317,6 +1774,14 @@ und die macOS-Argument-Prüfung.
   Start zu umgehen, ohne den Ordner von Hand zu leeren. Bewusst so: ein
   zweiter Schalter „nur für diese Sitzung" wäre eine Einstellung, die man
   nicht wiederfindet.
+- **Eine tote Datei liegt noch herum:** `%APPDATA%\Liquid Launcher\instances.json`
+  (374 Byte, vom 17.09.2026). Von dem alten, fest verdrahteten Modpack-Bild
+  übrig geblieben. **Kein Code liest sie** — die Modpacks stehen jetzt in
+  `<instanz>/instance.json`. Sie ist absichtlich *nicht* gelöscht worden: sie zu
+  entfernen wäre eine Handlung an Nutzerdaten ohne Auftrag, und solange sie
+  existiert, ist die Frage „liest da noch irgendwo die alte Liste?" eine, die
+  mit `grep` beantwortet werden kann und nicht mit Vermutungen. Löschen ist eine
+  Zeile, sollte aber eine bewusste Entscheidung sein.
 
 ---
 
@@ -1411,13 +1876,16 @@ ausgeschlossen.
   eine Kachel mit Fehlermeldung; die übrigen Kacheln bleiben bestehen
 - **Entfernen und Anordnen** wirken auf `settings.json` und überdauern einen
   Neustart; im Bearbeiten-Modus sind die Kacheln ziehbar, außerhalb nicht
-- **Die Einstellungen sind fünf Karten in zwei Spalten**, die
-  Microsoft-Login-Karte über die volle Breite darunter. Im Fenster gemessen:
-  der Bereich ist 1595 px hoch bei 664 px sichtbar, rollt also wirklich
+- **Die Einstellungen sind vier Karten in einer einzigen Spalte.** Eine
+  zweispaltige Anordnung wurde verworfen, weil die Karten bei der
+  vorgegebenen Breite umbrachen und unübersichtlich wurden. Sie bleiben auch
+  mit Seitenleisten-Spur einspaltig, weil die Ansicht **neben** der Spur liegt
+  (`kartenbereichRect()`). Im Fenster gemessen: der Bereich ist 1595 px hoch
+  bei 664 px sichtbar, rollt also wirklich
 - **Die Suche findet Karten über die Sprachumschaltung hinweg.** Gesucht wird
-  in allen vier Sprachfassungen, nicht nur im gerade sichtbaren Text; `FENSTER`
-  findet dieselbe Karte wie `fenster`, ein Unsinnswort findet nichts und sagt
-  das
+  in allen neun Sprachfassungen, nicht nur im gerade sichtbaren Text;
+  `ANORDNUNG` findet dieselbe Karte wie `anordnung` (Karten-Layout), ein
+  Unsinnswort findet nichts und sagt das
 - **Die Textgröße ist ein Multiplikator.** 120 % machen aus 44 px Überschrift
   52,8 px; in der ganzen `index.html` gibt es keine einzige `font-size` ohne
   `calc(... * var(--fs))`, weil eine nackte `font-size` den Regler ignorieren
@@ -1447,6 +1915,61 @@ ausgeschlossen.
   dieselbe Position einmal mit `news` und einmal mit `shortcut` gespeichert
   ergibt dasselbe Ergebnis, und dieses Ergebnis ist nachweislich **nicht** die
   Standardposition
+- **Die Seitenleiste fährt an alle vier Kanten, ohne eine Karte anzufassen.**
+  Im Fenster-Test (Gruppen 10c/10d) gemessen: Spur 72 px links, rechts, oben
+  und unten; die Karten bleiben an ihrem Platz; ein Zug wird nie abgelehnt —
+  die Nachbarn weichen von selbst aus oder schrumpfen nur, wenn sonst nichts
+  passt. Das Dock-Ergebnis übersteht zwei Starts.
+- **Die Modpacks sind echt.** Anlegen, Umbenennen, Duplizieren, Löschen und die
+  Technik nachtragen laufen im echten Fenster über den echten IPC gegen das
+  echte `instances.js` — 74 Prüfungen in `test-modpacks-fenster.js`. Die vorher
+  fest einprogrammierten erfundenen Modpacks (`vanilla-survival`, `atm10`,
+  `create-ab`) und ihr Ersatz in der Vorschau sind weg; `talberg` ist der einzige
+  verbliebene Ordner und bleibt unangetastet, weil es ein echter Spielstand ist.
+- **Der Modpack-Import ist echt getestet.** 140 Prüfungen in `test-modpack-import.js`, 18 in `test-modpack-import-formate.js` — darunter roh gebaute Zips mit echten `../`-Angriffen —
+  und 57 im echten Fenster in `test-modpack-import-fenster.js`: Datei-Prüfen,
+  Import über die Oberfläche, ehrliche Ablehnung von Quilt, Modrinth-Suche,
+  vier Sprachen.
+- **Der Leerzustand hat einen Weg heraus.** Ohne jedes Modpack steht das im
+  Dropdown, und der Knopf *Neues Modpack* führt zum Dialog. Das war vorher nur
+  darstellbar, indem vier erfundene Modpacks fest einprogrammiert waren.
+- **Ein Ordner ohne `instance.json` ist reparierbar, nicht verloren.** Der
+  Launcher erkennt die vorhandene Version aus `mods-meta.json`, sagt beim Start
+  von sich aus Bescheid, und falls man abbricht, gibt es in der Verwaltungszeile
+  einen Knopf *Technik* — sonst wäre ein Altbestand nicht startbar und nicht
+  reparierbar gewesen, also ein Sackgassen-Modpack. Der Knopf ist auffälliger
+  als die drei anderen, weil er keine Nebenhandlung ist, sondern die
+  Voraussetzung dafür, dass das Ding überhaupt läuft. Getestet über den Abbruch
+  hinweg: nach dem Abbrechen ist der Weg zurueck wirklich offen.
+- **Nach dem Speichern kommt der Dialog nicht von selbst wieder.** Genau einmal
+  je Start. Das ist über den Quelltext abgesichert und im Fenster geprüft: der
+  Versuch, den Knopf zu entfernen, lässt vier Prüfungen rot werden — unter anderem
+  die, die den *Titel* des geöffneten Dialogs prüft. Ohne diese Titelspur wäre
+  der Test grün gewesen, obwohl nur *Umbenennen* geklickt worden war, denn das
+  geht ebenfalls auf, zeigt die Version und sieht identisch aus.
+- **`lastPlayed` kommt aus Belegen, nicht aus dem Ordnereintrag.** Kette:
+  neueste `saves/<Welt>/level.dat`, sonst neuester Eintrag in `saves/`, sonst
+  neueste Datei in `logs/` (deckt „nur auf Servern gespielt" ab). Der Ordnermtime
+  ist als Beleg entfernt — ein frisch angelegter Ordner hat immer „jetzt" und
+  würde „gerade eben" behaupten, ohne dass gespielt wurde. Drei Prüfungen in
+  `test-instances.js` sichern das ab.
+- **Ein Beenden ist kein Absturz.** `stopProcess()` notiert die Absicht, bevor es
+  irgendetwas an den Prozess schickt, und der Abschluss-Zweig entscheidet danach
+  statt allein nach dem Exit-Code. Gemessen am echten Prozess: Exit-Code `null`
+  bzw. `1`, gemeldet wird *beendet* mit dem Zusatz, dass es Absicht war. Vorher
+  schrieb die Oberfläche nach jedem normalen Feierabend *Minecraft ist
+  abgestürzt* und dazu die letzten 15 Log-Zeilen als Fehlerliste — unter anderem,
+  dass das Spiel gerade sauber lief. 19 Prüfungen in
+  `test-prozess-stoppen.js`, gegen einen echten Prozess (eine winzige
+  `.java`-Datei statt des Spiels), mit Gegenprobe.
+- **Das Beenden braucht keinen Timeout mehr.** Der erste Versuch — ein
+  `SIGTERM` an den Kindprozess — stand vorher im `else`-Zweig und lief unter
+  Windows nie: Windows kennt keine Prozessgruppen, die negative PID findet dort
+  nichts, und der Wurf wurde weggeschluckt. Gemessen: `process.kill(-pid)` wirft
+  `ESRCH`, mit und ohne `detached: true` (das war als Ursache vermutet und ist
+  es nicht). Vorher kostete jeder Klick auf *Beenden* die vollen 10 Sekunden,
+  danach riss `taskkill /F` den Baum weg. Jetzt: **1 ms** statt **8192 ms** bei
+  einem Timeout von 8000 ms.
 
 **Nicht verifiziert, weil man dafür hinschauen muss:**
 
@@ -1520,12 +2043,17 @@ fehl, falls wieder ein leeres Argument auftaucht.
 
 ### Bekanntes Verhalten
 
-**Das Beenden dauert unter Windows ~8 Sekunden.** `stopProcess()` schickt erst
-ein `SIGTERM` und wartet dann 8 s auf ein sauberes `close`. Java-Prozesse
-reagieren auf `SIGTERM` unter Windows nicht — erst danach greift der Notfallweg
-`taskkill /T /F`, der den Prozessbaum beendet. Ergebnis ist korrekt (kein
-Waisenprozess bleibt), nur eben verzögert. Wer das schneller will, müsste dem
-Spiel vorher ein `WM_CLOSE` schicken statt den Prozess zu killen.
+**Ein Beenden beendet die JVM sofort — es speichert nicht vorher.** Unter Windows
+kennt das System kein `SIGTERM`; Node setzt dort ein `TerminateProcess`. Das
+Spiel bekommt also keine Gelegenheit, noch zu speichern, egal ob der erste
+Versuch oder der Notfallweg greift. Wer das braucht, muss dem Fenster vorher ein
+`WM_CLOSE` schicken statt den Prozess zu beenden. Die *Verzögerung* von früher
+(„~8 Sekunden bis gar nichts passiert") ist behoben, siehe *Was verifiziert ist*.
+
+**Ein Modpack ohne eingetragene Version startet nicht.** Das ist Absicht, keine
+Einschränkung: ohne Version gibt es kein `mainClass` und keine `version.json`. Der
+Launcher fragt deshalb beim Start nach und bietet die Technik später noch einmal
+an, statt das Modpack zu einem stillen Totalausfall zu machen.
 
 ---
 
@@ -1584,6 +2112,9 @@ src/
     ipc-handlers.js   alle IPC-Kanäle; instances:launch/stop = Startkette
     downloader.js     version.json, Libraries, Natives, Client-JAR, Assets,
                       Classpath- und Argumentbau
+    fabricLoader.js   Fabric Loader: Profil von meta.fabricmc.net holen, mit der
+                      Vanilla-version.json verschmelzen (Maven-Libraries auf die
+                      Mojang-Form bringen), Loader-Version waehlen; ohne Electron
     java-runtime.js   Java finden / passende JRE laden
     process.js        JVM starten & beenden, Log-Maskierung, Absturz-Erkennung
     auth.js           Microsoft-Login (msmc): OAuth -> Xbox -> XSTS -> Minecraft
@@ -1593,18 +2124,27 @@ src/
     worlds.js         Welten auflisten, Metadaten, loeschen (+ Pfadschutz)
     mc-ping.js        Server List Ping: Status, MOTD flachgezogen, Favicons
     instance-settings.js  Startoptionen pro Instanz: RAM + Aufloesung, geprueft
+    instances.js       Modpacks auf der Platte: anlegen, umbenennen, duplizieren,
+                      loeschen; instance.json je Ordner; liest nie und schreibt
+                      beim Lesen nichts
+    modpackImport.js   Modpack-Dateien (CurseForge .zip, Modrinth .mrpack)
+                      lesen und installieren; Zip-Slip-Schutz; ohne Electron
     widgets.js        Widget-Suche, Manifest-Pruefung, Positivliste (ohne Electron)
     mods.js           Modrinth
-    skins.js          Skin-/Capes-API
+    resourcepacks.js  Ressourcenpakete einer Instanz: lesen, .zip-Import,
+                      loeschen, Schalter in options.txt (ohne Electron)
   renderer/
     index.html        komplettes UI (Design, Themes, Logik)
     widget-host.js    baut die Widget-Kacheln, sandboxed Frames, Daten-Bruecke
     assets/           Hintergrund-Fotos
-widgets/               die vier mitgelieferten Widgets (uhr, welten, mods, laufzeit)
+widgets/               die 24 mitgelieferten Widgets (uhr, welten, mods, laufzeit,
+                       CPU, RAM, Laufwerk, Netzwerk, Java, …)
                        eigene kommen nach %APPDATA%\Liquid Launcher\widgets\
 WIDGETS.md             Anleitung zum Schreiben eigener Widgets
 setup-client-id.js       Azure-Client-ID eintragen (mit Anleitung und Pruefung)
 test-launch-chain.js    Argument-Kette isoliert testbar
+test-fabric-loader.js   Fabric Loader: Maven-Format, Verschmelzen, Versionswahl,
+                        Classpath-Zusammenspiel (ohne Netzwerk, ohne Electron)
 test-full-launch.js    echter Start isoliert testbar
 test-java-runtime.js   Java-Erkennung
 test-ipc-wiring.js     Electron-Seite und Startkette isoliert testbar
@@ -1613,12 +2153,28 @@ test-auth-errors.js    Login-Fehlermeldungen isoliert testbar
 test-worlds.js         NBT-Leser, Welt-Metadaten, Loeschschutz
 test-server-ping.js    Server-Ping, MOTD, Favicons (echte TCP-Server)
 test-instance-settings.js  Startoptionen: Grenzen, Einschleus-Versuche, Datei
+test-instances.js          Modpack-Speicher: anlegen, umbenennen, duplizieren,
+                          loeschen, Altbestand, kaputte Dateien, atomar
+test-modpack-import.js     Modpack-Dateien: Formate, Zip-Slip, Loader, Overrides
+test-modpack-import-formate.js  neue Import-Faelle: Wurzelordner, Prism/MultiMC,
+                          CurseForge ohne Schluessel, Server-Mods
+test-modpack-import-fenster.js  echtes Fenster: Import-Dialog, Ablehnung, Suche,
+                          4 Sprachen
+test-ressourcenpakete.js   Ressourcenpakete: Ordner, pack.mcmeta, options.txt
+test-ressourcenpakete-fenster.js  echtes Fenster: Ansicht, Schalter, Loeschen
+test-skin-ganzkoerper.js   Skin ohne Kopfanzeige: Ganzkoerper-Figur, zweite Ebene
+test-modpacks-fenster.js   echtes Fenster: Modpack-Dropdown, Dialog, Altbestand,
+                          Loeschen, und dass die Modsliste dem Wechsel folgt
+test-prozess-stoppen.js    Beenden ist kein Absturz, gegen einen echten Prozess
 test-hover-move.js        Hover-Bewegung der Karten: Weg, Grenze, Vorrang, beide Quellen
 test-einstellungen.js     Einstellungen: Karten, Suche, Schrift, Sicherheit, i18n
-test-einstellungen-fenster.js  echtes Fenster: 5 Karten, Suche, Schrift, Persistenz
+test-einstellungen-fenster.js  echtes Fenster: 4 Karten in einer Spalte, Suche, Schrift, Persistenz
+test-schnellzugriff-fenster.js  echtes Fenster: sechs Ansichten als Kacheln, Design-Panel,
+                           Screenshot-Kanal und Statuszeile
 test-snippets.js          die injizierten Snippets sind gueltiges JavaScript
 test-widgets.js           Widget-Suche, Manifest, Pfad-Traversal, Positivliste
 test-widget-anzeige.js    was die Kacheln tatsaechlich anzeigen (feste Uhrzeit)
+test-widget-systemdaten.js System- und Dateiwerte der D4-Kacheln (reines Node)
 test-widgets-fenster.js   echtes Electron-Fenster: Sandbox, Tokens, Bedienung
 test-ms-registration.js    Azure-Registrierung gegen Microsoft, mit Kontrollprobe
 test-auth.js          echter Login isoliert (npx electron, kein UI vom Launcher)

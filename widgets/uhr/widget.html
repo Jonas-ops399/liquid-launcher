@@ -15,6 +15,10 @@
 <style>
   /* transparent, sonst liegt ein weisses Rechteck auf dem Glas der Kachel */
   html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
+  /* Scrollleisten werden nirgends im Launcher gebraucht, also auch hier
+     keine. Siehe WIDGETS.md, Schritt 4 - der Host kann das nicht erzwingen. */
+  *{ scrollbar-width:none; }
+  *::-webkit-scrollbar{ width:0px; height:0px; }
   body {
     display:flex; align-items:center; justify-content:center;
     /* --ll-font kommt vom Launcher, siehe themeStile() in widget-host.js.
@@ -39,6 +43,9 @@
 (function () {
   'use strict';
   var locale = 'de-DE';
+  var T = {};
+
+  function tx(k, f) { return (T && typeof T[k] === 'string' && T[k]) ? T[k] : f; }
 
   function melde(typ, felder) {
     // '*' ist hier richtig: das Ziel ist ein iframe mit undurchsichtiger
@@ -64,7 +71,7 @@
           weekday: 'short', day: 'numeric', month: 'short', year: '2-digit'
         });
     } catch (err) {
-      melde('fehler', { nachricht: 'Uhr konnte nicht zeichnen: ' + err.message });
+      melde('fehler', { nachricht: tx('widget_clock_error', 'Uhr konnte nicht zeichnen: {msg}').replace('{msg}', err.message) });
     }
   }
 
@@ -72,9 +79,9 @@
     var d = ev.data;
     if (!d || d.quelle !== 'liquid-launcher') return;
     if (d.typ === 'daten') {
+      if (d.texte) T = d.texte;
       if (d.daten && d.daten.sprache) { locale = d.daten.sprache; }
       male();
-    } else if (d.typ === 'theme' && d.daten) {
       // Die Farben kommen vom Launcher, damit die Kachel zum Theme passt,
       // ohne dass der Benutzer sie im Widget hart codieren muss.
       var st = document.documentElement.style;

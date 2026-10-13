@@ -48,7 +48,7 @@ const FESTE_ZEIT = new Date(2026, 8, 28, 14, 30, 45); // 28.09.2026, 14:30:45
  * ("14:30" auf Deutsch, "2:30 PM" auf Englisch). Deshalb wird jedes Widget
  * mit zwei Sprachen laufen gelassen.
  */
-function fuehreAus(id, daten, sprache) {
+function fuehreAus(id, daten, sprache, texte) {
   const ordner = path.join(WURZEL, id);
   const html = fs.readFileSync(path.join(ordner, 'widget.html'), 'utf8');
   const script = html.match(/<script>([\s\S]*?)<\/script>/);
@@ -124,7 +124,7 @@ function fuehreAus(id, daten, sprache) {
   const voll = Object.assign({}, daten, { sprache: sprache || 'de' });
   for (const fn of empfangsKnoten) {
     try {
-      fn({ data: { quelle: 'liquid-launcher', typ: 'daten', daten: voll } });
+      fn({ data: { quelle: 'liquid-launcher', typ: 'daten', daten: voll, texte: texte || undefined } });
     } catch (err) {
       fehler.push('Nachricht: ' + err.message);
     }
@@ -279,6 +279,214 @@ gruppe('5. Jedes mitgelieferte Widget');
     ok(!/<script[^>]+src=/i.test(html) && !/<link[^>]+href=/i.test(html),
        id + ': laedt nichts von ausserhalb nach', id + ' hat ein src/href');
   }
+}
+
+// =====================================================================
+gruppe('6. Die D4-Kacheln mit echten Daten');
+// =====================================================================
+{
+  // Derselbe Koffer, den der Hauptprozess baut - gemessen, nicht erdacht.
+  // Geprueft wird, dass die Zahlen aus systemdaten.js auch in der Kachel
+  // ankommen, und dass eine Kachel ohne Wert WARTET statt zu raten.
+  const KOFFER = {
+    aktiveInstanz: 'talberg',
+    instanzen: [
+      { id: 'talberg', name: 'Talberg', version: '1.21.4', modloader: 'fabric',
+        lastPlayed: new Date(FESTE_ZEIT.getTime() - 2 * 60 * 60 * 1000).toISOString() },
+      { id: 'andere', name: 'Andere', version: '1.20.6', modloader: 'neoforge', lastPlayed: null }
+    ],
+    welten: DATEN.welten,
+    modAnzahl: 5,
+    server: [{ name: 'Hauptserver', online: true }, { name: 'Bau', online: false }],
+    gestartetAm: DATEN.gestartetAm,
+    sprache: 'de',
+    system: {
+      plattform: 'win32', release: '10.0.26200', arch: 'x64',
+      kerne: 8, cpuTaktMhz: 3600,
+      ramGesamt: 17179869184,        // 16 GiB
+      ramFrei: 8589934592,           // 8 GiB
+      ramBelegt: 8589934592,
+      systemUptimeSek: 90061         // 1 Tag + 1 h + 1 min
+    },
+    cpuLast: 37,
+    laufwerk: { gesamt: 512110190592, frei: 128849018880 },
+    netzwerk: [
+      { name: 'WLAN', intern: false, adresse: '192.168.178.5' },
+      { name: 'Loopback', intern: true, adresse: '127.0.0.1' }
+    ],
+    launcherVersion: '1.4.0',
+    javaInfo: { majorErforderlich: 21, erkannt: 21, status: 'gefunden' },
+    instanzGroesse: 4294967296,      // 4 GiB
+    modsGroesse: 734003200,          // 700 MiB
+    ressourcenpaketeAnzahl: 3,
+    instanzRam: { minGb: 2, maxGb: 6 },
+    prozesse: [{ name: 'javaw', pid: 4711, instanz: 'talberg',
+                 seit: FESTE_ZEIT.getTime() - 65 * 60 * 1000 }]
+  };
+
+  const f = (id) => fuehreAus(id, KOFFER, 'de');
+
+  const ram = f('ram');
+  Z.push('    ram        ' + JSON.stringify(ram.text));
+  ok(ram.fehler.length === 0, 'ram: kein Fehler', ram.fehler.join('; '));
+  ok(/GB/.test(ram.text) && /\//.test(ram.text), 'ram: zeigt belegt / gesamt in GB', ram.text);
+  ok(/Arbeitsspeicher/.test(ram.text), 'ram: beschriftet', ram.text);
+
+  const last = f('cpu-auslastung');
+  Z.push('    cpu-last   ' + JSON.stringify(last.text));
+  ok(/37 %/.test(last.text), 'cpu-auslastung: zeigt die gemessenen 37 %', last.text);
+  ok(/CPU-Auslastung/.test(last.text), 'cpu-auslastung: beschriftet', last.text);
+  // Ohne Messwert darf sie nichts behaupten - der Ladezustand ist ehrlich.
+  const lastNull = fuehreAus('cpu-auslastung', Object.assign({}, KOFFER, { cpuLast: null }), 'de');
+  ok(!/\d/.test(lastNull.text.replace(/…/g, '')) && !/%/.test(lastNull.text),
+     'cpu-auslastung: bei null ohne Wert zeigt sie keine Zahl', lastNull.text);
+
+  const info = f('cpu-info');
+  Z.push('    cpu-info   ' + JSON.stringify(info.text));
+  ok(/(^|\D)8(\D|$)/.test(info.text), 'cpu-info: 8 Kerne', info.text);
+  ok(/3600 MHz/.test(info.text), 'cpu-info: den gemessenen Takt', info.text);
+
+  const sys = f('system-info');
+  Z.push('    sys-info   ' + JSON.stringify(sys.text));
+  ok(/10\.0\.26200/.test(sys.text), 'system-info: die echte OS-Version', sys.text);
+  ok(/x64/.test(sys.text), 'system-info: die Architektur', sys.text);
+
+  const upt = f('system-laufzeit');
+  Z.push('    sys-uptime ' + JSON.stringify(upt.text));
+  ok(/1 d 1 h/.test(upt.text), 'system-laufzeit: 90061 s sind 1 Tag 1 Stunde', upt.text);
+  ok(/Rechner läuft/.test(upt.text), 'system-laufzeit: beschriftet', upt.text);
+
+  const lw = f('laufwerk');
+  Z.push('    laufwerk   ' + JSON.stringify(lw.text));
+  ok(/GB/.test(lw.text) && /von/.test(lw.text), 'laufwerk: frei und Gesamt in GB', lw.text);
+  ok(/Freier Speicherplatz/.test(lw.text), 'laufwerk: beschriftet', lw.text);
+
+  const netz = f('netzwerk');
+  Z.push('    netzwerk   ' + JSON.stringify(netz.text));
+  ok(/(^|\D)1(\D|$)/.test(netz.text), 'netzwerk: eine externe Schnittstelle', netz.text);
+  ok(/WLAN/.test(netz.text), 'netzwerk: ihr Name', netz.text);
+  ok(!/Loopback/.test(netz.text), 'netzwerk: die interne bleibt draussen', netz.text);
+
+  const jv = f('java');
+  Z.push('    java       ' + JSON.stringify(jv.text));
+  ok(/(^|\D)21(\D|$)/.test(jv.text), 'java: die erforderte Major-Version', jv.text);
+  ok(/gefunden/.test(jv.text), 'java: den gemeldeten Status', jv.text);
+
+  const lv = f('launcher-version');
+  Z.push('    version    ' + JSON.stringify(lv.text));
+  ok(/1\.4\.0/.test(lv.text), 'launcher-version: die echte Version', lv.text);
+
+  const si = f('speicher-instanz');
+  Z.push('    groesse    ' + JSON.stringify(si.text));
+  ok(/GB/.test(si.text), 'speicher-instanz: 4 GiB als GB', si.text);
+  ok(/Instanzordner/.test(si.text), 'speicher-instanz: beschriftet', si.text);
+
+  const pk = f('packs');
+  Z.push('    packs      ' + JSON.stringify(pk.text));
+  ok(/(^|\D)3(\D|$)/.test(pk.text), 'packs: drei Ressourcenpakete', pk.text);
+  ok(/Ressourcenpakete/.test(pk.text), 'packs: beschriftet', pk.text);
+
+  const ir = f('instanz-ram');
+  Z.push('    inst-ram   ' + JSON.stringify(ir.text));
+  ok(/2–6 GB/.test(ir.text), 'instanz-ram: 2 bis 6 GB', ir.text);
+
+  const sv = f('server-status');
+  Z.push('    server     ' + JSON.stringify(sv.text));
+  ok(/(^|\D)2(\D|$)/.test(sv.text), 'server-status: zwei eingetragen', sv.text);
+  ok(/1 online/.test(sv.text), 'server-status: einer ist online', sv.text);
+
+  const ins = f('instanzen');
+  Z.push('    instanzen  ' + JSON.stringify(ins.text));
+  ok(/(^|\D)2(\D|$)/.test(ins.text), 'instanzen: zwei davon', ins.text);
+  ok(/Talberg/.test(ins.text), 'instanzen: die aktive beim Namen', ins.text);
+
+  const proc = f('spiel-prozess');
+  Z.push('    prozess    ' + JSON.stringify(proc.text));
+  ok(/1 h 5 min/.test(proc.text), 'spiel-prozess: laeuft seit 1 h 5 min', proc.text);
+  ok(/Talberg/.test(proc.text), 'spiel-prozess: fuer welche Instanz', proc.text);
+
+  const lz = f('letzter-start');
+  Z.push('    letzter    ' + JSON.stringify(lz.text));
+  ok(/vor 2 Std\./.test(lz.text), 'letzter-start: vor 2 Std. gerechnet', lz.text);
+  ok(/Zuletzt gespielt/.test(lz.text), 'letzter-start: beschriftet', lz.text);
+
+  // Nie gespielt: das ist ein echter Zustand, kein Ladezustand.
+  const nie = fuehreAus('letzter-start',
+    Object.assign({}, KOFFER, { instanzen: [{ id: 'a', name: 'A', lastPlayed: null }] }), 'de');
+  Z.push('    nie        ' + JSON.stringify(nie.text));
+  ok(/noch nie gespielt/.test(nie.text), 'letzter-start: "noch nie gespielt" statt Punkten', nie.text);
+
+  const dat = f('datum');
+  Z.push('    datum      ' + JSON.stringify(dat.text));
+  ok(/\d{2}\.\d{2}\.\d{4}/.test(dat.text), 'datum: das feste Datum 28.09.2026', dat.text);
+  ok(/Montag/.test(dat.text), 'datum: der Wochentag', dat.text);
+
+  // Die Beschriftungen der neuen Kacheln folgen dem texte-Block.
+  const en = fuehreAus('cpu-auslastung', KOFFER, 'en', {
+    widget_cpu_load: 'CPU load', time_hours: '{n} hours ago', widget_last_played: 'Last played'
+  });
+  Z.push('    englisch   ' + JSON.stringify(en.text));
+  ok(/CPU load/.test(en.text), 'cpu-auslastung benutzt den englischen Text', en.text);
+  const lzEn = fuehreAus('letzter-start', KOFFER, 'en', {
+    widget_last_played: 'Last played', time_hours: '{n} hours ago'
+  });
+  ok(/2 hours ago/.test(lzEn.text) && /Last played/.test(lzEn.text),
+     'letzter-start benutzt die englischen Texte', lzEn.text);
+
+  // Kein Pfad und kein Token darf in einer dieser Kacheln landen.
+  for (const id of ['ram', 'laufwerk', 'system-info', 'netzwerk', 'speicher-instanz']) {
+    const r = f(id);
+    ok(!/AppData|[A-Za-z]:\\/.test(r.text), id + ': zeigt keinen Pfad', r.text);
+  }
+}
+
+// =====================================================================
+gruppe('7. Ohne Daten raten die neuen Kacheln nicht');
+// =====================================================================
+{
+  // Der Zustand direkt nach dem Laden: ein leerer Koffer. Jede Kachel muss
+  // den Ladezustand zeigen - "0", "0 %" oder "keine Daten" waeren Lugen.
+  const leer = {};
+  for (const id of ['ram', 'cpu-auslastung', 'laufwerk', 'java', 'packs',
+                    'instanz-ram', 'speicher-instanz', 'system-laufzeit',
+                    'netzwerk', 'spiel-prozess', 'server-status']) {
+    const r = fuehreAus(id, leer, 'de');
+    ok(r.fehler.length === 0, id + ': kein Fehler im leeren Zustand', r.fehler.join('; '));
+    ok(!/NaN|undefined|null|\[object/.test(r.text), id + ': kein NaN oder undefined', r.text);
+    ok(!/\d/.test(r.text.replace(/…/g, '')),
+       id + ': keine Zahl ohne gemessenen Wert', r.text);
+  }
+}
+
+// =====================================================================
+gruppe('8. Die Beschriftungen folgen der Sprache (texte)');
+// =====================================================================
+{
+  // Der Launcher schickt mit den Daten einen texte-Block. Die Kacheln sollen
+  // ihn benutzen - und ohne ihn weiterhin Deutsch zeigen (Rueckfall).
+  const texte = {
+    widget_worlds: 'Worlds', widget_worlds_none: 'no savegames', widget_worlds_broken: '{n} broken',
+    widget_mods: 'Mods', widget_mods_empty: 'mods folder is empty',
+    widget_uptime: 'Launcher running', widget_clock_error: 'Clock could not draw: {msg}'
+  };
+
+  const leer = fuehreAus('welten', Object.assign({}, DATEN, { welten: [] }), 'en', texte);
+  Z.push('    welten/en: ' + JSON.stringify(leer.text));
+  ok(/Worlds/.test(leer.text) && /no savegames/.test(leer.text),
+     'Welten-Kachel benutzt die englischen Texte', leer.text);
+
+  const modsEn = fuehreAus('mods', Object.assign({}, DATEN, { modAnzahl: 0 }), 'en', texte);
+  ok(/mods folder is empty/.test(modsEn.text),
+     'Mods-Kachel benutzt den englischen Leer-Text', modsEn.text);
+
+  const laufEn = fuehreAus('laufzeit', DATEN, 'en', texte);
+  ok(/Launcher running/.test(laufEn.text),
+     'Laufzeit-Kachel benutzt den englischen Titel', laufEn.text);
+
+  // Ohne texte-Objekt muss weiterhin Deutsch erscheinen (Rueckfall).
+  const modsOhne = fuehreAus('mods', Object.assign({}, DATEN, { modAnzahl: 0 }), 'de');
+  ok(/mods-Ordner ist leer/.test(modsOhne.text),
+     'ohne texte bleibt der deutsche Rueckfall', modsOhne.text);
 }
 
 // ---------------------------------------------------------------------

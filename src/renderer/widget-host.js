@@ -1,4 +1,4 @@
-﻿// src/renderer/widget-host.js
+// src/renderer/widget-host.js
 // Laedt, rendert und versorgt die Widget-Kacheln in der Hauptansicht.
 //
 // Dieses Skript laeuft als ganz normale Seite im HAUPTframe. Es ist NICHT
@@ -54,9 +54,57 @@
   const rahmenZuId = new Map();
   /** Die Message-Listener werden genau einmal angehaengt. */
   let zuhoererBereits = false;
+  /**
+   * Dasselbe fuer die Bedienelemente, aus demselben Grund.
+   *
+   * starten() wird mehrfach gerufen: beim Laden zweimal (index.html ruft es
+   * einmal direkt und einmal ueber die "Neu laden"-Strecke auf) und bei
+   * jedem Klick auf "Neu laden" noch einmal. Ohne diese Sperre haengt
+   * jeder Aufruf neue Listener an dieselben zwei Elemente, und die
+   * verdoppeln sich mit jedem Mal.
+   *
+   * Sichtbar war das am Knopf "Anpassen": bearbeitenSchalten() ist ein
+   * Umschalter, kein Schalter. Zwei Listener auf einem Klick sind zweimal
+   * umgeschaltet — der Zustand bleibt, wie er war, und der Knopf tut gar
+   * nichts. Beim Laden zweimal aufgerufen war er ab dem ersten Start tot;
+   * nach einem Neuladen mit drei Listenern konnte der Zustand sogar
+   * kippen, je nachdem, wie oft vorher geladen wurde.
+   */
+  let verdrahtetBereits = false;
 
   const el = (id) => document.getElementById(id);
   const hatPreload = () => !!(window.launcher && window.launcher.widgets);
+
+  // ---------------------------------------------------------------------
+  // Uebersetzte Texte
+  // ---------------------------------------------------------------------
+  // Dieses Skript wird VOR dem grossen Skript in index.html geladen und kann
+  // dessen t() nicht aufrufen. Die fertigen Strings kommen deshalb von dort:
+  // ueber setzeTexte() (und zusaetzlich als window.__wdgTexte, falls der
+  // Aufruf das Skript noch nicht erreicht hat). Faellt beides aus, bleibt der
+  // deutsche Text stehen - die Kachel soll nie leer beschriftet sein.
+  let texte = null;
+  function aktuelleTexte() {
+    return texte || window.__wdgTexte || {};
+  }
+  // Liefert den uebersetzten String oder den mitgegebenen deutschen Fallback.
+  function wtxt(schluessel, fallback, vars) {
+    let s = aktuelleTexte()[schluessel];
+    if (typeof s !== 'string' || !s) return fallback;
+    if (vars) {
+      for (const k of Object.keys(vars)) s = s.replace('{' + k + '}', vars[k]);
+    }
+    return s;
+  }
+  function setzeTexte(neu) {
+    texte = (neu && typeof neu === 'object') ? neu : null;
+    // Beschriftungen, die im Hauptfenster stehen (Knopf), sofort anpassen.
+    aktualisiereBearbeitenKnopf();
+    // Den Kacheln die neuen Texte nachschieben. Sie zeichnen daraufhin mit
+    // d.texte neu - ein kompletter Neuaufbau der Frames waere unnoetig und
+    // wuerde jedes Widget-Skript neu starten.
+    sendeAnAlle('daten', { daten: daten || {} });
+  }
 
   // ---------------------------------------------------------------------
   // Kurzformen fuer die Preload-Kanaele. Ohne Preload (z.B. index.html
@@ -135,10 +183,12 @@
   // ---------------------------------------------------------------------
   function sende(rahmen, typ, inhalt) {
     try {
-      rahmen.contentWindow.postMessage(
-        Object.assign({ quelle: 'liquid-launcher', typ: typ }, inhalt || {}),
-        '*'
-      );
+      const zusammen = Object.assign({ quelle: 'liquid-launcher', typ: typ }, inhalt || {});
+      // Bei Daten immer die uebersetzten Texte mitgeben. Ein Widget kann so
+      // seine Beschriftungen in der eingestellten Sprache zeichnen, ohne die
+      // Sprachdatei des Launchers zu kennen.
+      if (typ === 'daten' && !zusammen.texte) zusammen.texte = aktuelleTexte();
+      rahmen.contentWindow.postMessage(zusammen, '*');
     } catch (err) {
       // passiert, wenn der Frame gerade neu geladen wird - unkritisch
     }
@@ -174,7 +224,7 @@
         sende(treffer, 'daten', { daten: daten || {} });
         sende(treffer, 'theme', { daten: themeFarben() });
       } else if (d.typ === 'fehler') {
-        zeigeFehler(treffer, d.nachricht || 'Unbekannter Fehler');
+        zeigeFehler(treffer, d.nachricht || wtxt('widget_unknown_error', 'Unbekannter Fehler'));
       }
     });
   }
@@ -196,8 +246,8 @@
     const knopf = document.createElement('button');
     knopf.className = 'wdg-entf';
     knopf.type = 'button';
-    knopf.title = 'Diese Kachel entfernen';
-    knopf.setAttribute('aria-label', 'Kachel entfernen');
+    knopf.title = wtxt('widget_remove', 'Diese Kachel entfernen');
+    knopf.setAttribute('aria-label', wtxt('widget_remove', 'Diese Kachel entfernen'));
     knopf.textContent = '×';
     knopf.addEventListener('click', (ev) => {
       ev.stopPropagation();
@@ -266,21 +316,42 @@
       const leer = document.createElement('div');
       leer.className = 'wdg-leer' + (bearbeiten ? '' : ' wdg-leer-loud');
       leer.textContent = bearbeiten
-        ? 'Keine Kacheln. In den Einstellungen unter "Widgets" hinzufügen.'
-        : 'Keine Kacheln. Widgets lassen sich in den Einstellungen hinzufügen.';
+        ? wtxt('widget_empty_edit', 'Keine Kacheln. In den Einstellungen unter "Widgets" hinzufügen.')
+        : wtxt('widget_empty', 'Keine Kacheln. Widgets lassen sich in den Einstellungen hinzufügen.');
       gitter.appendChild(leer);
       aktualisiereBearbeitenKnopf();
       return;
     }
 
+    let i = 0;
     for (const k of kacheln) {
       const div = kachelEl(k.id, k.breite);
+      // Laufende Nummer fuer die gestaffelte Einblendung (--wdg-i). Die
+      // Verzoegerung selbst steht im CSS; hier steht nur, WELCHE Kachel
+      // dran ist. Ohne die Nummer wuerden alle gleichzeitig erscheinen.
+      div.style.setProperty('--wdg-i', String(i++));
       gitter.appendChild(div);
       const rahmen = frameEin(div, k.id);
       ladeHtml(rahmen, k.id);
     }
 
     aktualisiereBearbeitenKnopf();
+    if (!bearbeiten) kachelnAnimieren();
+  }
+
+  // Laesst die Kacheln gestaffelt von unten einblenden. Der Kniff ist das
+  // Entfernen und (nach erzwungenem Neuzeichnen) Wiederanlegen der Klasse:
+  // eine CSS-Animation laeuft nur einmal, und beim Wechsel zurueck auf die
+  // Startseite soll sie erneut laufen. Im Bearbeiten-Modus bewusst NICHT -
+  // sonst huepft das Raster bei jeder Umsortierung neu auf.
+  function kachelnAnimieren() {
+    const gitter = el('statGrid');
+    if (!gitter) return;
+    gitter.classList.remove('wdg-auf');
+    // offsetWidth lesen erzwingt einen Reflow; sonst fasst der Browser das
+    // Entfernen und Hinzufuegen im selben Frame zusammen und nichts passiert.
+    void gitter.offsetWidth;
+    gitter.classList.add('wdg-auf');
   }
 
   // HTML im Nachhinein in einen bereits gebauten Frame legen. Geht nicht
@@ -290,11 +361,21 @@
       const div = rahmen.parentElement;
       if (!div || !r) return;
       const platzhalter = div.querySelector('.wdg-ladet');
-      if (platzhalter) platzhalter.remove();
       if (!r.ok) {
-        zeigeFehler(rahmen, r.fehler || 'Konnte nicht geladen werden');
+        if (platzhalter) platzhalter.remove();
+        zeigeFehler(rahmen, r.fehler || wtxt('widget_load_failed', 'Konnte nicht geladen werden'));
         return;
       }
+      // Platzhalter und Inhalt tauschen weich: erst wenn der Frame wirklich
+      // gezeichnet ist, blendet er ein und der Titel aus. Vorher sprang der
+      // Inhalt hart in die schon sichtbare leere Kachel (Doppel-Pop).
+      rahmen.addEventListener('load', () => {
+        rahmen.classList.add('bereit');
+        if (platzhalter) {
+          platzhalter.classList.add('weg');
+          setTimeout(() => platzhalter.remove(), 400);
+        }
+      }, { once: true });
       rahmen.setAttribute('srcdoc', r.html);
     });
   }
@@ -323,6 +404,43 @@
   function instanzSetzen(id) {
     instanzId = typeof id === 'string' ? id : '';
     return datenLaden(instanzId);
+  }
+
+  // ---------------------------------------------------------------------
+  // Frische Systemwerte (Phase D4)
+  // ---------------------------------------------------------------------
+  // CPU-Auslastung, freier RAM, freier Datenträger-Platz und laufende
+  // Spiel-Prozesse aendern sich, waehrend der Launcher offen ist. Sie
+  // kommen nicht mit widgets:daten - das wuerde beim Polling jedes Mal den
+  // ganzen Koffer neu lesen, inklusive Welten-NBT und mods-Ordner.
+  //
+  // Deshalb ein eigener, leichter Kanal. Er wird alle paar Sekunden
+  // abgefragt und nur gemergt: die langsam waechsenden Felder (Welten,
+  // Mods, Groessen) bleiben im Koffer stehen, den widgets:daten geliefert
+  // hat.
+  //
+  // Hintergrund-Fenster werden uebersprungen (document.hidden): was niemand
+  // sieht, muss niemand messen.
+  const FRISCH_MS = 4000;
+  let frischTakt = null;
+
+  function datenFrisch() {
+    return ruf('systemdaten').then((frisch) => {
+      if (!frisch || typeof frisch !== 'object') return daten;
+      daten = Object.assign({}, daten || {}, frisch);
+      sendeAnAlle('daten', { daten: daten });
+      return daten;
+    });
+  }
+
+  // Genau einmal timer legen - sonst waechst mit jedem starten() ein
+  // zweiter Takt, und die Messungen verdoppeln sich still.
+  function frischStarten() {
+    if (frischTakt !== null) return;
+    frischTakt = setInterval(() => {
+      if (document.hidden) return;
+      datenFrisch();
+    }, FRISCH_MS);
   }
 
   // ---------------------------------------------------------------------
@@ -369,7 +487,7 @@
     const knopf = el('statBearbeitenBtn');
     if (!knopf) return;
     knopf.classList.toggle('aktiv', bearbeiten);
-    knopf.textContent = bearbeiten ? 'Fertig' : 'Anpassen';
+    knopf.textContent = bearbeiten ? wtxt('widget_done', 'Fertig') : wtxt('widget_customize', 'Anpassen');
     const karte = el('statCard');
     if (karte) karte.classList.toggle('wdg-im-edit', bearbeiten);
   }
@@ -384,8 +502,11 @@
   // Ziehen und Ablegen. Nur im Bearbeiten-Modus aktiv - sonst wauscht beim
   // normalen Vorbeifahren am Fenster nichts mit.
   function verdrahtung() {
+    // Siehe verdrahtetBereits: die Listener duerfen nur einmal dran.
+    if (verdrahtetBereits) return;
     const gitter = el('statGrid');
     if (!gitter) return;
+    verdrahtetBereits = true;
 
     let gezogen = null;
 
@@ -471,13 +592,21 @@
 
     verdrahtung();
 
+    // Ebenfalls genau einmal. Ohne diese Sperre wird der Umschalter bei
+    // jedem weiteren starten() ein Listener reicher und der Knopf
+    // arbeitet dann entweder gar nicht oder beim Tastendruck zweimal.
     const knopf = el('statBearbeitenBtn');
-    if (knopf) knopf.addEventListener('click', () => bearbeitenSchalten());
+    if (knopf && !knopf.dataset.wdgVerdrahtet) {
+      knopf.dataset.wdgVerdrahtet = '1';
+      knopf.addEventListener('click', () => bearbeitenSchalten());
+    }
 
     rendern();
     // Beim ersten Aufbau ist noch keine Instanz bekannt. Sobald index.html
     // eine gewaehlt hat, ruft es instanzSetzen() auf.
     datenLaden(instanzId);
+    // Der Takt fuer die sich haendelnden Systemwerte (D4).
+    frischStarten();
 
     return { verfuegbar: verfuegbar, kacheln: kacheln };
   }
@@ -504,9 +633,16 @@
     bearbeitenSchalten,
     datenLaden,
     instanzSetzen,
+    // Leichte Systemwerte neu holen und an alle Kacheln schicken (D4).
+    datenFrisch,
     themeStile,
     themeFarben,
     themeSenden,
+    // Uebersetzte Texte vom Hauptfenster uebernehmen (siehe setzeTexte()).
+    setzeTexte,
+    // Gestaffelte Einblendung der Kacheln erneut abspielen (z.B. beim
+    // Zurueckwechseln auf die Startseite).
+    kachelnAnimieren,
     // Nur zum Nachsehen in der Konsole
     _zustand: () => ({ verfuegbar, kacheln, daten, bearbeiten, instanzId })
   };

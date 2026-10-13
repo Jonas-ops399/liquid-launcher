@@ -142,13 +142,20 @@ app.whenReady().then(async () => {
     hatLauncher: typeof window.launcher === 'object' && window.launcher !== null,
     hatSettings: !!(window.launcher && window.launcher.settings),
     hatFonts: !!(window.launcher && window.launcher.fonts),
-    karten: document.querySelectorAll('#settingsRaster .settings-karte').length
+    karten: document.querySelectorAll('#settingsRaster .settings-karte').length,
+    hatLaunchoptsNav: !!document.querySelector('.nav-item[data-view="launchopts"]'),
+    hatOptsFelder: !!document.getElementById('optsRamMin')
   })`));
   ok(kontrolle.hatLauncher, 'window.launcher ist vorhanden');
   ok(kontrolle.hatSettings, 'window.launcher.settings ist vorhanden');
   ok(kontrolle.hatFonts, 'window.launcher.fonts ist vorhanden (der neue Kanal)');
-  ok(kontrolle.karten === 5, 'Genau fuenf Einstellungskarten', String(kontrolle.karten));
-  if (!kontrolle.hatLauncher || kontrolle.karten !== 5) {
+  // Nach dem Umbau (Phase C): die Startoptionen sind keine eigene Ansicht
+  // mehr, sondern die vierte Karte in den Einstellungen.
+  ok(kontrolle.karten === 4, 'Genau vier Einstellungskarten (inkl. Startoptionen)',
+     String(kontrolle.karten));
+  ok(!kontrolle.hatLaunchoptsNav, 'Der Startoptionen-Menuepunkt ist aus der Seitenleiste raus');
+  ok(kontrolle.hatOptsFelder, 'Die RAM-Felder stehen jetzt in den Einstellungen');
+  if (!kontrolle.hatLauncher || kontrolle.karten !== 4) {
     Z.push('');
     Z.push('!! Die Kontrolle ist fehlgeschlagen. Alle weiteren Ergebnisse waeren');
     Z.push('   wertlos - es laeuft dann nicht die echte Oberflaeche.');
@@ -229,26 +236,19 @@ app.whenReady().then(async () => {
       ok(k.ende, '"' + k.titel + '": Ende erreichbar',
          'Hoehe ' + k.hoehe + ', Bereich ' + m.sichtbareHoehe);
     }
-    // Und konkret das Feld, das beim alten Zustand unerreichbar war.
+    // Die Microsoft-Login-Karte wurde bewusst aus den Einstellungen entfernt:
+    // das Client-ID-Feld darf im DOM nicht mehr auftauchen. Dass die Karten
+    // trotzdem vollstaendig erreichbar bleiben, deckt die Schleife oben ab.
     const clientId = JSON.parse(await js(`JSON.stringify((function(){
-      var sc = document.querySelector('#viewSettings .settings-scroll');
-      var f = document.getElementById('clientIdInput');
-      if(!f) return { da: false };
-      // So weit scrollen, bis das Feld ganz oben ist, dann pruefen.
-      sc.scrollTop = f.offsetTop - sc.offsetTop - 8;
-      var b = f.getBoundingClientRect(), c = sc.getBoundingClientRect();
-      return { da: true, sichtbar: (b.top - c.top) >= -1 && (b.bottom - c.top) <= sc.clientHeight + 1,
-               wert: f.value };
+      return { da: !!document.getElementById('clientIdInput') };
     })())`));
-    ok(clientId.da, 'Das Microsoft-Client-ID-Feld existiert');
-    ok(clientId.sichtbar, 'Das Microsoft-Client-ID-Feld laesst sich in den sichtbaren Bereich scrollen',
-       JSON.stringify(clientId));
+    ok(!clientId.da, 'Das Microsoft-Client-ID-Feld ist aus den Einstellungen entfernt');
   }
 
   // -------------------------------------------------------------------
   // 2. Das Karten-Raster
   // -------------------------------------------------------------------
-  gruppe('2. Die Karten stehen in zwei Spalten');
+  gruppe('2. Die Karten stehen untereinander in EINER Spalte');
   {
     const g = JSON.parse(await js(`JSON.stringify((function(){
       var r = document.getElementById('settingsRaster');
@@ -264,17 +264,16 @@ app.whenReady().then(async () => {
     })())`));
     ok(g.display === 'grid', 'Das Raster ist wirklich ein Raster', 'display: ' + g.display);
     const spaltenZahl = g.spalten.split(' ').filter(x => x && x !== 'none').length;
-    ok(spaltenZahl === 2, 'Genau zwei Spalten bei 1400px Fensterbreite', g.spalten);
+    ok(spaltenZahl === 1, 'Genau EINE Spalte - die Karten stehen untereinander', g.spalten);
     const normal = g.karten.filter(k => !k.breit);
     const breit = g.karten.filter(k => k.breit);
-    ok(normal.every(k => k.breite < 700), 'Die normalen Karten sind halb so breit',
+    ok(normal.every(k => k.breite > 900), 'Auch die normalen Karten laufen ueber die volle Breite',
        JSON.stringify(normal.map(k => k.breite)));
-    ok(breit.length === 1, 'Genau eine breite Karte', JSON.stringify(breit.map(k => k.titel)));
-    ok(breit[0] && breit[0].breite > 900, 'Die breite Karte ueberspannt beide Spalten',
-       breit[0] ? String(breit[0].breite) : 'keine');
-    // Zwei Karten auf gleicher Hoehe = zwei in einer Reihe.
+    ok(breit.length === 0, 'Keine Karte traegt noch die Klasse breit (Microsoft-Karte ist raus)',
+       JSON.stringify(breit.map(k => k.titel)));
+    // Keine zwei Karten auf gleicher Hoehe: alles untereinander.
     const paare = new Set(normal.map(k => k.oben));
-    ok(paare.size === 2, 'Die vier schmalen Karten bilden zwei Reihen',
+    ok(paare.size === normal.length, 'Keine zwei Karten teilen sich eine Reihe',
        'Reihen bei y = ' + [...paare].join(', '));
   }
 
@@ -487,18 +486,32 @@ app.whenReady().then(async () => {
         return { klasse: document.documentElement.classList.contains('ll-wenig-bewegung'),
                  aria: schalter.getAttribute('aria-checked') };
       }
+      // Messobjekt: Hero und Profilkarte bewegen sich seit 06.10. nicht
+      // mehr - der Test haengt sich deshalb eine eigene stat-tile-Kachel
+      // an, die weiterhin mitlaeuft, und misst an ihr die beiden Stufen.
+      function ziel(){
+        var el = document.getElementById('testBewegung');
+        if(!el){
+          el = document.createElement('div');
+          el.id = 'testBewegung';
+          el.className = 'stat-tile';
+          el.style.cssText = 'position:fixed;left:10px;top:10px;width:120px;height:80px;';
+          document.body.appendChild(el);
+        }
+        return el;
+      }
       // Echter Mausweg: mouseover, dann mousemove mit Koordinaten.
       function ueberfahren(){
-        var hero = document.getElementById('heroCard');
-        var r = hero.getBoundingClientRect();
-        hero.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: r.left + r.width - 4, clientY: r.top + 3 }));
-        hero.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: r.left + r.width - 4, clientY: r.top + 3 }));
-        return hero.style.transform || '';
+        var el = ziel();
+        var r = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: r.left + r.width - 4, clientY: r.top + 3 }));
+        el.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: r.left + r.width - 4, clientY: r.top + 3 }));
+        return el.style.transform || '';
       }
       function zurueck(){
-        var hero = document.getElementById('heroCard');
-        hero.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
-        return hero.style.transform === '' ? 'geleert' : hero.style.transform;
+        var el = ziel();
+        el.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+        return el.style.transform === '' ? 'geleert' : el.style.transform;
       }
       var aus = zustand();
       var bewegtAus = ueberfahren();
@@ -571,16 +584,24 @@ app.whenReady().then(async () => {
           })()
         };
       }
-      return [suchen(''), suchen('schrift'), suchen('fenster'),
-              suchen('widget'), suchen('gibtesnicht'), suchen('FENSTER')];
+      return [suchen(''), suchen('schrift'), suchen('anordnung'),
+              suchen('widget'), suchen('gibtesnicht'), suchen('ANORDNUNG'),
+              suchen('aufloesung')];
     })())`));
-    ok(m[0].sichtbar.length === 5, 'Leeres Feld: alle fuenf Karten da', JSON.stringify(m[0].sichtbar));
+    ok(m[0].sichtbar.length === 4, 'Leeres Feld: alle vier Karten da (Startoptionen sind in den Einstellungen)',
+       JSON.stringify(m[0].sichtbar));
     ok(m[1].sichtbar.length === 1 && /Darstellung/.test(m[1].sichtbar[0]),
        '"schrift" findet genau die Darstellungskarte', JSON.stringify(m[1].sichtbar));
-    ok(m[2].sichtbar.length === 1 && /Fenster/.test(m[2].sichtbar[0]),
-       '"fenster" findet genau die Fensterkarte', JSON.stringify(m[2].sichtbar));
+    ok(m[2].sichtbar.length === 1 && /Karten-Layout/.test(m[2].sichtbar[0]),
+       '"anordnung" findet genau die Layout-Karte', JSON.stringify(m[2].sichtbar));
     ok(m[3].sichtbar.length === 1 && /Widgets/.test(m[3].sichtbar[0]),
        '"widget" findet genau die Widget-Karte', JSON.stringify(m[3].sichtbar));
+    // Frueher stand hier "ram" - seit Phase D4 heisst eine Kachel in der
+    // Widget-Liste "RAM fürs Spiel", und "ram" trifft damit auch die
+    // Widget-Karte. Gesucht wird deshalb nach "aufloesung", einem Begriff,
+    // der nur in der data-suche der Startoptionen-Karte steht.
+    ok(m[6].sichtbar.length === 1 && /Startoptionen/.test(m[6].sichtbar[0]),
+       '"aufloesung" findet genau die Startoptionen-Karte', JSON.stringify(m[6].sichtbar));
     ok(m[4].sichtbar.length === 0, 'Ein Unsinnswort findet nichts', JSON.stringify(m[4].sichtbar));
     ok(m[4].leer === true, 'Und sagt das auch');
     ok(m[4].unsichtbarWirklich === 'none', 'Ausgeblendete Karten sind wirklich display:none',
@@ -589,24 +610,24 @@ app.whenReady().then(async () => {
     // Geprueft wird mit einem Begriff, der wirklich in einer Karte steht -
     // "SUCHE" waere hier sinnlos, weil das Suchfeld selbst ausserhalb der
     // Karten liegt und der Begriff daher nirgends auftaucht.
-    ok(m[5].sichtbar.length === 1 && /Fenster/.test(m[5].sichtbar[0]),
-       'Grossbuchstaben stoeren nicht', JSON.stringify(m[5].sichtbar));
-    // Querprobe: der englische Begriff findet die Karte auch, wenn die
+    ok(m[5].sichtbar.length === 1 && /Karten-Layout/.test(m[5].sichtbar[0]),
+       'Grossbuchstaben stoeren nicht', JSON.stringify(m[5].sichtbar));    // Querprobe: der englische Begriff findet die Karte auch, wenn die
     // Oberflaeche auf Deutsch steht.
     const q = JSON.parse(await js(`JSON.stringify((function(){
       var f = document.getElementById('settingsSuche');
       f.value = 'widget'; f.dispatchEvent(new Event('input'));
       var a = [].filter.call(document.querySelectorAll('#settingsRaster .settings-karte'),
         function(k){ return !k.classList.contains('unsichtbar'); }).length;
-      f.value = 'fenêtre'; f.dispatchEvent(new Event('input'));
+      f.value = 'apparence'; f.dispatchEvent(new Event('input'));
       var b = [].filter.call(document.querySelectorAll('#settingsRaster .settings-karte'),
         function(k){ return !k.classList.contains('unsichtbar'); }).length;
       f.value = ''; f.dispatchEvent(new Event('input'));
-      return { widget: a, fenetre: b };
+      return { widget: a, fr: b };
     })())`));
     ok(q.widget === 1, 'Der englische Begriff findet die Karte auf einer deutschen Oberflaeche',
        String(q.widget) + ' Karten');
-    ok(q.fenetre >= 1, 'Und derselbe Begriff auf Französisch auch', String(q.fenetre) + ' Karten');
+    ok(q.fr === 1, 'Und der franzoesische Titel derselben Karte auch',
+       String(q.fr) + ' Karten');
   }
 
   // -------------------------------------------------------------------
@@ -653,14 +674,16 @@ app.whenReady().then(async () => {
 
     ok(alt.da, 'Die Schnellzugriff-Karte ist da');
     ok(alt.block === 'shortcut', 'Sie traegt data-block="shortcut"', String(alt.block));
-    ok(alt.col === '1 / span 1' && alt.row === '2 / span 1',
-       'Ein altes "news" setzt die Karte auf die alte Stelle',
+    // Die Karte steht auf Kartenkoordinate Spalte 1 - berechnet wird daraus
+    // Spalte 2, weil links die schmale Seitenleisten-Spur davorsteht.
+    ok(alt.col === '2 / span 1' && alt.row === '2 / span 1',
+       'Ein altes "news" setzt die Karte auf die alte Stelle (hinter der Spur)',
        JSON.stringify({ col: alt.col, row: alt.row }));
     ok(alt.col === neu.col && alt.row === neu.row,
        'Und genau dieselbe Stelle wie das Layout, das schon "shortcut" hiess',
        JSON.stringify({ alt: [alt.col, alt.row], neu: [neu.col, neu.row] }));
     // Gegenprobe: das muss auch wirklich eine andere Stelle sein als sonst.
-    ok(!(alt.col === '5 / span 2' && alt.row === '4 / span 1'),
+    ok(!(alt.col === '6 / span 2' && alt.row === '4 / span 1'),
        'Und nicht stillschweigend auf der Standardposition',
        JSON.stringify({ col: alt.col, row: alt.row }));
   }
@@ -760,8 +783,9 @@ app.whenReady().then(async () => {
       var k = document.getElementById('shortcutCard');
       return { col: getComputedStyle(k).gridColumn, row: getComputedStyle(k).gridRow };
     })())`));
-    ok(m.col === '1 / span 1' && m.row === '2 / span 1',
-       'Das eigene Layout ist beim Start angewendet', JSON.stringify(m));
+    ok(m.col === '2 / span 1' && m.row === '2 / span 1',
+       'Das eigene Layout ist beim Start angewendet (Spalte 1 hinter der Spur)',
+       JSON.stringify(m));
 
     // Startet man das Programm ein zweites Mal, darf die Datei dabei nicht
     // ungefragt umgeschrieben werden. Genau das war der Fehler.
@@ -781,14 +805,248 @@ app.whenReady().then(async () => {
   }
 
   // -------------------------------------------------------------------
+  // 10c. Die Seitenleiste hat eine eigene schmale Spur an allen vier Raendern
+  // -------------------------------------------------------------------
+  gruppe('10c. Die Seitenleiste wandert an alle vier Raender, Karten unangetastet');
+  {
+    // Die Leiste ist kein Rasterblock mehr, sondern eine eigene schmale Spur
+    // (links/rechts als Spalte, oben/unten als Zeile). Kern der Pruefung:
+    // sie kann die Seite wechseln, ohne dass eine Karte angefasst wird - die
+    // gespeicherten Koordinaten bleiben, nur die berechneten Gitterlinien
+    // dahinter verschieben sich (gridVersatz()).
+    const BLOECKE = {
+      hero:     { col: 1, row: 1, colSpan: 4, rowSpan: 4 },
+      profile:  { col: 5, row: 1, colSpan: 2, rowSpan: 1 },
+      stat:     { col: 5, row: 2, colSpan: 2, rowSpan: 2 },
+      shortcut: { col: 5, row: 4, colSpan: 2, rowSpan: 1 }
+    };
+
+    async function messen(){
+      return JSON.parse(await js(`JSON.stringify((function(){
+        var out = {};
+        ['sidebar','hero','profile','stat','shortcut'].forEach(function(id){
+          var el = id === 'sidebar' ? document.getElementById('sidebarEl')
+                   : document.getElementById(id + 'Card');
+          if(!el) return;
+          out[id] = {
+            col: getComputedStyle(el).gridColumn,
+            row: getComputedStyle(el).gridRow,
+            breite: Math.round(el.getBoundingClientRect().width)
+          };
+        });
+        var sh = document.getElementById('shellEl');
+        var cs = getComputedStyle(sh);
+        out.shell = {
+          edge: sh.dataset.sbEdge,
+          spalten: cs.gridTemplateColumns.trim().split(' ').map(function(v){ return parseFloat(v); }),
+          zeilen: cs.gridTemplateRows.trim().split(' ').map(function(v){ return parseFloat(v); })
+        };
+        return out;
+      })())`));
+    }
+
+    async function oeffnenMit(edge){
+      await oeffnen({ blockLayout: { version: 2, sidebar: { edge: edge }, ...BLOECKE } });
+      // Die Karten bekommen ihre Platzierung per grid-column/row; die kurze
+      // Uebergang-Animation faengt sonst Zwischenwerte ein. Kurz warten.
+      await new Promise(r => setTimeout(r, 450));
+      return messen();
+    }
+
+    const links = await oeffnenMit('left');
+    ok(links.shell.edge === 'left', 'links: Kante gesetzt', links.shell.edge);
+    ok(links.sidebar.col === '1 / span 1', 'links: Sidebar in Spur 1', links.sidebar.col);
+    ok(links.hero.col === '2 / span 4' && links.hero.row === '1 / span 4',
+       'links: Kartenraster beginnt hinter der Spur bei Spalte 2',
+       links.hero.col + ' / ' + links.hero.row);
+    ok(links.shell.spalten[0] > 50 && links.shell.spalten[0] < 90,
+       'links: Die Spur ist schmal (~72px, nicht eine Rasterspalte)',
+       String(links.shell.spalten[0]));
+    ok(links.sidebar.breite <= 85,
+       'links: Die Leiste ist selbst nur so breit wie ihre Spur',
+       String(links.sidebar.breite));
+    ok(links.shell.zeilen[0] > 110,
+       'links: Die erste Zeile ist eine echte Karten-Zeile',
+       String(links.shell.zeilen[0]));
+
+    const rechts = await oeffnenMit('right');
+    ok(rechts.shell.edge === 'right', 'rechts: Kante gesetzt', rechts.shell.edge);
+    ok(rechts.sidebar.col === '7 / span 1', 'rechts: Sidebar in der letzten Spur', rechts.sidebar.col);
+    ok(rechts.hero.col === '1 / span 4' && rechts.hero.row === '1 / span 4',
+       'rechts: Kartenraster beginnt bei Spalte 1 (Spur steht rechts)',
+       rechts.hero.col + ' / ' + rechts.hero.row);
+    ok(rechts.shell.spalten[0] > 110,
+       'rechts: Die erste Spalte ist eine echte Karten-Spalte, nicht die Spur',
+       String(rechts.shell.spalten[0]));
+    ok(rechts.shell.spalten[rechts.shell.spalten.length - 1] < 90,
+       'rechts: Die schmale Spur ist die letzte Spalte',
+       String(rechts.shell.spalten[rechts.shell.spalten.length - 1]));
+
+    const oben = await oeffnenMit('top');
+    ok(oben.shell.edge === 'top', 'oben: Kante gesetzt', oben.shell.edge);
+    ok(oben.sidebar.row === '1 / span 1', 'oben: Sidebar in der ersten Zeile', oben.sidebar.row);
+    ok(oben.hero.col === '1 / span 4' && oben.hero.row === '2 / span 4',
+       'oben: Kartenraster beginnt unter der Spur bei Zeile 2',
+       oben.hero.col + ' / ' + oben.hero.row);
+    ok(oben.shell.zeilen[0] < 90 && oben.shell.zeilen[oben.shell.zeilen.length - 1] > 110,
+       'oben: Die schmale Spur ist die erste Zeile, die Karten darunter',
+       String(oben.shell.zeilen[0]) + ' / ' + String(oben.shell.zeilen[oben.shell.zeilen.length - 1]));
+
+    const unten = await oeffnenMit('bottom');
+    ok(unten.shell.edge === 'bottom', 'unten: Kante gesetzt', unten.shell.edge);
+    ok(unten.sidebar.row === '5 / span 1', 'unten: Sidebar in der letzten Zeile', unten.sidebar.row);
+    ok(unten.hero.col === '1 / span 4' && unten.hero.row === '1 / span 4',
+       'unten: Kartenraster beginnt bei Zeile 1 (Spur steht unten)',
+       unten.hero.col + ' / ' + unten.hero.row);
+    ok(unten.shell.zeilen[0] > 110 && unten.shell.zeilen[unten.shell.zeilen.length - 1] < 90,
+       'unten: Die schmale Spur ist die letzte Zeile, die Karten darueber',
+       String(unten.shell.zeilen[0]) + ' / ' + String(unten.shell.zeilen[unten.shell.zeilen.length - 1]));
+  }
+
+  // -------------------------------------------------------------------
+  // 10d. Nachbarn weichen von selbst aus; der Andock-Knopf setzt die Kante
+  // -------------------------------------------------------------------
+  gruppe('10d. Nachbarn weichen von selbst aus, Andock-Knopf setzt die Kante');
+  {
+    // Invariante: aus den berechneten Gitterlinien lassen sich die Rechtecke
+    // bauen; ueberlappen darf sich nichts, und alle vier Karten muessen da
+    // sein. Die 0.35s-Transition der Karten erledigt sich durch Warten.
+    async function pruefeKeinUeberlapp(name){
+      await new Promise(r => setTimeout(r, 450));
+      const m = JSON.parse(await js(`JSON.stringify((function(){
+        function linien(s){ var teile = s.split(' '); return { start: +teile[0], span: +teile[3] }; }
+        var out = { karten: [] };
+        ['hero','profile','stat','shortcut'].forEach(function(id){
+          var el = document.getElementById(id + 'Card');
+          var cs = getComputedStyle(el);
+          out.karten.push({ id: id, col: linien(cs.gridColumn), row: linien(cs.gridRow) });
+        });
+        out.sb = getComputedStyle(document.getElementById('sidebarEl')).gridColumn;
+        return out;
+      })())`));
+      let kollision = null;
+      for(let i = 0; i < m.karten.length && !kollision; i++){
+        for(let j = i + 1; j < m.karten.length && !kollision; j++){
+          const a = m.karten[i], b = m.karten[j];
+          const x = a.col.start < b.col.start + b.col.span && a.col.start + a.col.span > b.col.start;
+          const y = a.row.start < b.row.start + b.row.span && a.row.start + a.row.span > b.row.start;
+          if(x && y) kollision = a.id + ' <-> ' + b.id;
+        }
+      }
+      ok(!kollision, name + ': keine zwei Karten ueberlappen', String(kollision));
+      ok(m.karten.length === 4, name + ': alle vier Karten sind da', String(m.karten.length));
+      return m;
+    }
+
+    // Hero nur 3 Spalten breit - so bleibt beim Verbreitern Platz und die
+    // drei rechten Karten muessen gemeinsam zur Seite ruecken.
+    await oeffnen({ blockLayout: { version: 2, sidebar: { edge: 'left' },
+      hero:     { col: 1, row: 1, colSpan: 3, rowSpan: 4 },
+      profile:  { col: 4, row: 1, colSpan: 2, rowSpan: 1 },
+      stat:     { col: 4, row: 2, colSpan: 2, rowSpan: 2 },
+      shortcut: { col: 4, row: 4, colSpan: 2, rowSpan: 1 } } });
+
+    // --- Resize: den Hero nach Osten verbreitern. Er waechst in die Spalte,
+    // in der Konto/Stats/Zugriff stehen - die weichen von selbst aus.
+    await js(`JSON.stringify((function(){
+      document.querySelector('.nav-item[data-view="settings"]').click();
+      document.getElementById('openLayoutEditorBtn').click();
+      var shell = document.getElementById('beShell');
+      var hero = document.querySelector('.be-leaf[data-block="hero"]');
+      var kante = hero.querySelector('.be-e');
+      var cs = getComputedStyle(shell);
+      var spalten = cs.gridTemplateColumns.trim().split(' ').map(function(v){ return parseFloat(v); });
+      var cellW = spalten.slice(1).reduce(function(a,b){ return a+b; }, 0) / 6;
+      var r = hero.getBoundingClientRect();
+      var start = { x: r.right, y: r.top + r.height / 2 };
+      // 1.4 Zellen nach rechts - die Rundung ergibt sicher +1 Zelle.
+      var end = { x: start.x + cellW * 1.4, y: start.y };
+      kante.dispatchEvent(new MouseEvent('mousedown', { clientX: start.x, clientY: start.y, bubbles: true, cancelable: true }));
+      shell.dispatchEvent(new MouseEvent('mousemove', { clientX: end.x, clientY: end.y, bubbles: true, cancelable: true }));
+      shell.dispatchEvent(new MouseEvent('mouseup', { clientX: end.x, clientY: end.y, bubbles: true, cancelable: true }));
+      document.getElementById('closeLayoutEditorBtn').click();
+      return true;
+    })())`);
+    await new Promise(r => setTimeout(r, 500));
+    const resize = JSON.parse(await js(`JSON.stringify({
+      heroCol: getComputedStyle(document.getElementById('heroCard')).gridColumn })`));
+    ok(resize.heroCol === '2 / span 4',
+       'Der Hero ist nach dem Verbreitern 4 Spalten breit', resize.heroCol);
+    await pruefeKeinUeberlapp('Nach dem Verbreitern');
+
+    // --- Drag: den Hero ganz nach rechts ziehen, in die Zone der drei Karten.
+    const drag = JSON.parse(await js(`JSON.stringify((function(){
+      document.querySelector('.nav-item[data-view="settings"]').click();
+      document.getElementById('openLayoutEditorBtn').click();
+      var shell = document.getElementById('beShell');
+      var griff = document.querySelector('.be-leaf[data-block="hero"] .be-move');
+      var cs = getComputedStyle(shell);
+      var spalten = cs.gridTemplateColumns.trim().split(' ').map(function(v){ return parseFloat(v); });
+      var zeilen = cs.gridTemplateRows.trim().split(' ').map(function(v){ return parseFloat(v); });
+      var cellW = spalten.slice(1).reduce(function(a,b){ return a+b; }, 0) / 6;
+      var cellH = zeilen.reduce(function(a,b){ return a+b; }, 0) / 4;
+      var gapX = parseFloat(cs.columnGap) || 0;
+      var gapY = parseFloat(cs.rowGap) || 0;
+      var rr = shell.getBoundingClientRect();
+      var padL = parseFloat(cs.paddingLeft) || 0;
+      var padT = parseFloat(cs.paddingTop) || 0;
+      var spurW = spalten[0];
+      // Mittelpunkt von Zelle (3, 1) im Kartenraster.
+      var x = rr.left + padL + spurW + gapX + (3 - 1) * (cellW + gapX) + cellW / 2;
+      var y = rr.top + padT + gapY + (1 - 1) * (cellH + gapY) + cellH / 2;
+      var m = griff.getBoundingClientRect();
+      griff.dispatchEvent(new MouseEvent('mousedown', { clientX: m.left + m.width/2, clientY: m.top + m.height/2, bubbles: true, cancelable: true }));
+      shell.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true, cancelable: true }));
+      shell.dispatchEvent(new MouseEvent('mouseup', { clientX: x, clientY: y, bubbles: true, cancelable: true }));
+      document.getElementById('closeLayoutEditorBtn').click();
+      return true;
+    })())`));
+    await new Promise(r => setTimeout(r, 500));
+    const dragErgebnis = JSON.parse(await js(`JSON.stringify({
+      heroCol: getComputedStyle(document.getElementById('heroCard')).gridColumn })`));
+    ok(dragErgebnis.heroCol !== '2 / span 4' && dragErgebnis.heroCol !== resize.heroCol,
+       'Der Hero steht nach dem Ziehen woanders', dragErgebnis.heroCol);
+    await pruefeKeinUeberlapp('Nach dem Ziehen');
+    // Das Ziehen hat gespeichert - warten, bis die Datei geschrieben ist.
+    await new Promise(r => setTimeout(r, 600));
+    const vorDock = JSON.parse(fs.readFileSync(EINSTELLUNGEN, 'utf8')).blockLayout;
+    ok(vorDock && vorDock.sidebar.edge === 'left', 'Nach dem Ziehen ist die Kante links', JSON.stringify(vorDock && vorDock.sidebar));
+
+    // --- Andock-Knopf: Klick setzt die Leiste nach unten, keine Karte bewegt sich.
+    await js(`(function(){
+      document.querySelector('.nav-item[data-view="settings"]').click();
+      document.getElementById('openLayoutEditorBtn').click();
+      document.querySelector('.be-dock[data-dock="bottom"]').click();
+      document.getElementById('closeLayoutEditorBtn').click();
+      return true;
+    })()`);
+    await new Promise(r => setTimeout(r, 500));
+    const nachDockBlick = JSON.parse(await js(`JSON.stringify({
+      edge: document.getElementById('shellEl').dataset.sbEdge })`));
+    ok(nachDockBlick.edge === 'bottom',
+       'Der Andock-Knopf setzt die Leiste nach unten', nachDockBlick.edge);
+    await new Promise(r => setTimeout(r, 600));
+    const nachDock = JSON.parse(fs.readFileSync(EINSTELLUNGEN, 'utf8')).blockLayout;
+    ok(nachDock && nachDock.sidebar.edge === 'bottom',
+       'Und der Klick speichert die neue Kante', JSON.stringify(nachDock && nachDock.sidebar));
+    ok(JSON.stringify(nachDock.hero) === JSON.stringify(vorDock.hero),
+       'Dabei bleibt die Kartenanordnung unangetastet',
+       JSON.stringify({ vorher: vorDock.hero, nachher: nachDock.hero }));
+    const mDock = await pruefeKeinUeberlapp('Nach dem Andocken');
+    ok(mDock.sb === '1 / span 1' || mDock.sb === '1 / span 6',
+       'Die Seitenleiste ist weiterhin in ihrer Spur', mDock.sb);
+  }
+
+  // -------------------------------------------------------------------
   // 11. Der Schnellzugriff
   // -------------------------------------------------------------------
   gruppe('11. Der Schnellzugriff');
   {
     await oeffnen({});
     const m = JSON.parse(await js(`JSON.stringify((function(){
-      var out = { kacheln: [].map.call(document.querySelectorAll('.shortcut-kachel'),
-        function(k){ return k.dataset.view; }) };
+      var alle = [].slice.call(document.querySelectorAll('.shortcut-kachel'));
+      var out = { kacheln: alle.map(function(k){ return k.dataset.view; }),
+        anzahl: alle.length };
       document.querySelector('.shortcut-kachel[data-view="servers"]').click();
       out.nachKlick = document.getElementById('shellEl').getAttribute('data-view');
       out.aktiv = [].map.call(document.querySelectorAll('.nav-item.active'),
@@ -800,7 +1058,10 @@ app.whenReady().then(async () => {
         function(e){ return e.dataset.view; });
       return out;
     })())`));
-    ok(m.kacheln.length === 4, 'Vier Kacheln', JSON.stringify(m.kacheln));
+    ok(m.anzahl === 8, 'Acht Kacheln (sechs Ansichten + zwei Aktionen)',
+       JSON.stringify(m.kacheln));
+    ok(m.kacheln.filter(Boolean).length === 6, 'Sechs davon sind Ansichten',
+       JSON.stringify(m.kacheln));
     ok(m.nachKlick === 'servers', 'Ein Klick auf "Server" oeffnet die Server-Ansicht',
        String(m.nachKlick));
     ok(m.aktiv.length === 1 && m.aktiv[0] === 'servers',
@@ -837,6 +1098,191 @@ app.whenReady().then(async () => {
     const f = await js(`JSON.stringify((window.WidgetHost.themeStile()['--ll-font']||'').slice(0,40))`);
     ok(/font|Segoe|system/i.test(f.replace(/"/g, '')),
        '--ll-font wird mitgegeben und sieht nach einem Schriftstapel aus', f);
+  }
+
+  // -------------------------------------------------------------------
+  // 10e. Umraeumen: was der Wechsel der Nachbarn wirklich tut
+  // -------------------------------------------------------------------
+  gruppe('10e. Umraeumen: berechneter Uebergang 0.3-0.35s oder 0s (Schalter UND Windows)');
+  {
+    // GEMESSEN wird die echte Lage (getBoundingClientRect), der berechnete
+    // Uebergang und - das ist der eigentliche Fund - was der Browser gerade
+    // wirklich animiert (getAnimations()). Nicht der Quelltext. Jede Aktion
+    // laeuft dreimal:
+    //   an       = KONTROLLE: die CSS-Regel traegt 0.35s/0.3s
+    //   schalter = "Weniger Bewegung" in settings.json
+    //   system   = Windows-Einstellung, per DevTools-Protokoll emuliert
+    // Bei schalter/system muss dieselbe Aktion dieselbe berechnete Dauer auf 0s
+    // bringen. Dass sich die Karte ueberhaupt bewegt hat, wird jedes Mal
+    // eigens belegt - sonst waere "steht sofort am Ziel" auch bei einer
+    // Karte wahr, die nie ihren Platz gewechselt hat (fehlendes Element,
+    // falscher Selektor).
+    //
+    // BEFUND, Stand 28.09.2026, und der Grund fuer die KONTROLLE weiter
+    // unten: dieser Wechsel gleitet nicht, er springt - auch bei
+    // eingeschalteter Bewegung. Ein Wechsel von grid-column/grid-row wird
+    // in Electron 32 (Chromium 128) nicht interpoliert; getAnimations()
+    // ist waehrend des Umbaues leer. Die Karten rucken also seit jeher
+    // sofort an ihren Platz, und das Tor ist die richtige Absicherung fuer
+    // den Fall, dass es einmal gleitet - heute aendert es nur die berechnete
+    // Dauer. Die Positionstest oben beweisen deshalb das Tor NICHT, nur die
+    // Dauer-Test und die Animations-Kontrolle.
+    const LAYOUT = { version: 2, sidebar: { edge: 'left' },
+      hero:     { col: 1, row: 1, colSpan: 3, rowSpan: 4 },
+      profile:  { col: 4, row: 1, colSpan: 2, rowSpan: 1 },
+      stat:     { col: 4, row: 2, colSpan: 2, rowSpan: 2 },
+      shortcut: { col: 4, row: 4, colSpan: 2, rowSpan: 1 } };
+
+    // Aktion 'resize' = Hero wird groesser, Nachbarn weichen aus.
+    // Aktion 'dock'   = die Spur dockt an eine andere Kante (unten).
+    async function messung(aktion){
+      await js(`(function(){
+        document.querySelector('.nav-item[data-view="settings"]').click();
+        document.getElementById('openLayoutEditorBtn').click();
+        return true;
+      })()`);
+      await new Promise(r => setTimeout(r, 700));
+      await js('window.__umraeumAktion = ' + JSON.stringify(aktion) + '; true;');
+      return JSON.parse(await js(`new Promise(function(resolve){
+        var SEL = { profile: '.be-leaf[data-block="profile"]', stat: '.be-leaf[data-block="stat"]',
+                    sidebar: '#sidebarEl', overlay: '#viewOverlay' };
+        function snap(){
+          var o = {};
+          Object.keys(SEL).forEach(function(k){
+            var e = document.querySelector(SEL[k]);
+            if(!e){ o[k] = null; return; }
+            var r = e.getBoundingClientRect();
+            // 'an' = was der Browser gerade wirklich animiert. Das ist die
+            // entscheidende Groesse: eine CSS-Transition, die es nicht gibt,
+            // sieht in der Position genauso aus wie eine, die nichts tut.
+            // getAnimations() sieht man auch an einem verdeckten Fenster.
+            var a = e.getAnimations();
+            o[k] = { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height),
+                     dauer: getComputedStyle(e).transitionDuration,
+                     an: a.length === 0 ? 'KEINE'
+                        : a.map(function(x){ return (x.transitionProperty || '?') + ':' + x.playState; }).join(',') };
+          });
+          return o;
+        }
+        var vor = snap();
+        var aktion = window.__umraeumAktion;
+        if(aktion === 'dock'){
+          document.querySelector('.be-dock[data-dock="bottom"]').click();
+        } else {
+          var shell = document.getElementById('beShell');
+          var hero = document.querySelector('.be-leaf[data-block="hero"]');
+          var kante = hero.querySelector('.be-e');
+          var cs = getComputedStyle(shell);
+          var spalten = cs.gridTemplateColumns.trim().split(' ').map(function(v){ return parseFloat(v); });
+          var cellW = spalten.slice(1).reduce(function(a,b){ return a+b; }, 0) / 6;
+          var r = hero.getBoundingClientRect();
+          var s = { x: r.right, y: r.top + r.height / 2 };
+          var e2 = { x: s.x + cellW * 1.4, y: s.y };
+          kante.dispatchEvent(new MouseEvent('mousedown', { clientX: s.x, clientY: s.y, bubbles: true, cancelable: true }));
+          shell.dispatchEvent(new MouseEvent('mousemove', { clientX: e2.x, clientY: e2.y, bubbles: true, cancelable: true }));
+          shell.dispatchEvent(new MouseEvent('mouseup', { clientX: e2.x, clientY: e2.y, bubbles: true, cancelable: true }));
+        }
+        var t0 = snap();
+        setTimeout(function(){
+          var ende = snap();
+          document.getElementById('closeLayoutEditorBtn').click();
+          resolve(JSON.stringify({ vor: vor, t0: t0, ende: ende }));
+        }, 700);
+      })`));
+    }
+
+    const gleich = (a, b) => !!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+
+    // welche Elemente sich bei welcher Aktion bewegen muessen
+    const BEWEGER = { resize: ['profile', 'stat'], dock: ['sidebar', 'overlay'] };
+
+    async function pruefeModus(modus, erwartetAus){
+      for (const aktion of ['resize', 'dock']) {
+        await oeffnen(modus.settings);
+        if (modus.vorher) await modus.vorher();
+        const m = await messung(aktion);
+        const tag = modus.name + ' / ' + aktion + ': ';
+        for (const k of BEWEGER[aktion]) {
+          ok(m.vor[k] && m.t0[k] && m.ende[k], tag + k + ' existiert (kein stilles Null)',
+             JSON.stringify([!!m.vor[k], !!m.t0[k], !!m.ende[k]]));
+          if (!(m.vor[k] && m.t0[k] && m.ende[k])) continue;
+          ok(!gleich(m.vor[k], m.ende[k]), tag + k + ' hat wirklich den Platz gewechselt (sonst beweist die Messung nichts)',
+             JSON.stringify({ vor: m.vor[k], ende: m.ende[k] }));
+
+          // DIE KONTROLLE, und sie gilt fuer beide Modi gleich. Sie sagt
+          // nicht "die Karte ist schon da" - das waere in jedem Modus wahr
+          // und damit wertlos. Sie sagt: es laeuft gar kein Uebergang.
+          //
+          // Das ist keine Rechnung, sondern eine Messung: der Browser legt
+          // jede laufende CSS-Transition als CSSTransition in getAnimations()
+          // ab, und dort steht bei diesem Umbau nichts - auch dann nicht,
+          // wenn die Karte im selben Tick schon am neuen Platz steht. Ein
+          // Wechsel von grid-column/grid-row wird in diesem Chromium
+          // (Electron 32) also gar nicht interpoliert, sondern gesetzt.
+          //
+          // Zwei Folgen, beide wichtig:
+          //   - Der Sprung ist NICHT die Wirkung des Tors. Das Tor schaltet
+          //     die berechnete Dauer von 0.35s auf 0s (das pruefen die
+          //     Dauer-Pruefungen darunter), aber ein Uebergang, den es
+          //     nicht gibt, kann man auch nicht wegschalten. Ohne diese
+          //     Zeile waere der Test an dieser Stelle gruen, obwohl das
+          //     Tor nichts bewirkt.
+          //   - Wenn ein Chromium-Update grid-column doch interpolieren
+          //     laesst, wird diese Pruefung rot. Genau so soll es sein: dann
+          //     ist "springt ohne Uebergang" nicht mehr das, was man sieht,
+          //     und die Dauer-Pruefungen allein tragen die Aussage nicht mehr.
+          ok(m.t0[k].an === 'KEINE',
+             tag + k + ' KONTROLLE: es laeuft kein Uebergang - der Platzwechsel ist ein Sprung, kein Gleiten',
+             m.t0[k].an);
+
+          const dauerSek = parseFloat(m.t0[k].dauer);
+          if (erwartetAus) {
+            ok(gleich(m.t0[k], m.ende[k]), tag + k + ' steht SOFORT am neuen Platz (kein Zwischenbild)',
+               JSON.stringify({ t0: m.t0[k], ende: m.ende[k] }));
+            ok(dauerSek === 0, tag + k + ' berechneter Uebergang ist 0s', m.t0[k].dauer);
+          } else {
+            ok(dauerSek > 0.25 && dauerSek < 0.4, tag + k + ' KONTROLLE: die CSS-Regel traegt 0.3-0.35s - das ist es, was das Tor abschaltet',
+               m.t0[k].dauer);
+          }
+        }
+      }
+    }
+
+    await pruefeModus({ name: 'Bewegung AN', settings: { blockLayout: LAYOUT } }, false);
+    await pruefeModus({ name: 'Schalter "Weniger Bewegung"', settings: { wenigerBewegung: true, blockLayout: LAYOUT } }, true);
+
+    // Windows-Einstellung emulieren. Kontrollen: die Medienabfrage ist wirklich
+    // wahr, der Schalter ist wirklich aus - sonst mischen sich die Quellen.
+    const dbg = fenster.webContents.debugger;
+    let emuOk = true;
+    try {
+      dbg.attach('1.3');
+      await dbg.sendCommand('Emulation.setEmulatedMedia',
+        { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+      await pruefeModus({
+        name: 'Windows "Animationseffekte" aus', settings: { blockLayout: LAYOUT },
+        vorher: async () => {
+          const k = JSON.parse(await js(`JSON.stringify({
+            mq: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+            klasse: document.documentElement.classList.contains('ll-wenig-bewegung'),
+            schalter: document.getElementById('bewegungSchalter').getAttribute('aria-checked') })`));
+          ok(k.mq === true, 'Windows-Quelle: prefers-reduced-motion ist im Fenster wirklich wahr', JSON.stringify(k));
+          ok(k.schalter === 'false', 'Windows-Quelle: der eigene Schalter ist dabei AUS (reine Windows-Quelle)', JSON.stringify(k));
+          // Die Medienabfrage allein muss genuegen, auch ohne die Klasse:
+          const ohneKlasse = await js(`(function(){
+            document.documentElement.classList.remove('ll-wenig-bewegung');
+            return getComputedStyle(document.getElementById('sidebarEl')).transitionDuration; })()`);
+          ok(parseFloat(ohneKlasse) === 0,
+             'Windows-Quelle: auch OHNE die Klasse ist der Uebergang der Seitenleiste 0s (@media wirkt allein)', ohneKlasse);
+        }
+      }, true);
+    } catch (e) {
+      emuOk = false;
+      ok(false, 'Windows-Emulation ueber das DevTools-Protokoll lief ohne Fehler', String(e && e.message || e));
+    } finally {
+      try { await dbg.sendCommand('Emulation.setEmulatedMedia', { features: [] }); } catch {}
+      try { dbg.detach(); } catch {}
+    }
   }
 
   // -------------------------------------------------------------------

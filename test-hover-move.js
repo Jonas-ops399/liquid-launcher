@@ -243,14 +243,14 @@ group('1. Der Selektor trifft die Elemente, die es wirklich gibt');
   hover(ziel, 110, 70);
   ok(tx(k) !== null, 'Stat-Kachel bewegt sich');
 }
-// Die zwei grossen Karten, die es vorher gar nicht gab. Ohne eigene
-// Bewegung im Inneren duerfen sie mitlaufen.
+// Die zwei grossen Karten (Hero, Profil) sollen STILLSTEHEN:
+// Wunsch vom 06.10., die Bewegung der grossen Elemente ist raus.
 for (const [name, sel] of [['Hero-Karte', '.hero'], ['Profilkarte', '.profile-card']]) {
   const ziel = makeChain(['div' + sel]);
   const k = ziel.closest(sel);
   k.rect = { left: 0, top: 0, width: 600, height: 200 };
   hover(ziel, 580, 190);
-  ok(tx(k) !== null, name + ' bewegt sich beim Ueberfahren',
+  ok(tx(k) === null, name + ' bleibt beim Ueberfahren still',
      'Inline-transform war: ' + JSON.stringify(k.style.transform));
 }
 

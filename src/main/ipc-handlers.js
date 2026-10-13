@@ -11,9 +11,10 @@
 // - auth.* ist ECHT: Microsoft-OAuth über msmc, Tokens verschlüsselt.
 // - worlds.* ist ECHT: listWorlds liest das level.dat, deleteWorld löscht.
 // - servers.* ist ECHT: servers.json pro Instanz plus echter Server-Ping.
-// - skins.* ist noch ein PLATZHALTER, der auf die Team-Implementierung wartet.
-//   Die Reject-Meldung ist absichtlich sprechend, damit im UI klar sichtbar
-//   wird, was noch fehlt, statt stumm mit leeren Daten zu antworten.
+// - skins.* ist ECHT fuer die ANZEIGE: eigene Skin-PNG waehlen, pruefen
+//   (64x64 oder 64x32), im Datenordner ablegen, als Data-URI liefern.
+//   skins:setActive (echter Skinwechsel bei Mojang) bleibt ein Reject,
+//   weil dafuer ein angemeldetes Microsoft-Konto noetig ist - siehe README.
 
 const { ipcMain, dialog, app, safeStorage, shell, BrowserWindow } = require('electron');
 const fs = require('node:fs');
@@ -23,8 +24,9 @@ const crypto = require('node:crypto');
 // Die drei Module, die vorher nur geschrieben, aber nie aufgerufen wurden.
 // Erst jetzt ist die Kette vollständig: Instanz -> Java -> Dateien -> Prozess.
 const { detectJava, downloadJava, requiredJavaMajor } = require('./java-runtime');
-const { ensureVersionFiles, resolveLaunchOptions } = require('./downloader');
-const { launchProcess, stopProcess } = require('./process');
+const { ensureVersionFiles, resolveLaunchOptions, getVersionManifest } = require('./downloader');
+const fabricLoader = require('./fabricLoader');
+const { launchProcess, stopProcess, getActiveProcesses } = require('./process');
 
 // Microsoft-Login. auth.js kapselt die OAuth-Kette, account-store.js das
 // verschluesselte Speichern der Tokens.
@@ -45,13 +47,29 @@ const instSettings = require('./instance-settings');
 // test-widgets.js unter reinem Node laufen kann - dieselbe Regel wie bei
 // app-paths.js.
 const widgetsMod = require('./widgets');
+// Systemwerte fuer die Overview-Widgets: CPU, RAM, Datentraeger, Ordnergroessen.
+// Wie widgets.js ohne electron - test-widget-systemdaten.js laeuft unter
+// reinem Node.
+const systemdaten = require('./systemdaten');
+// Modpacks: Anlegen, Auflisten, Umbenennen, Loeschen, Duplizieren. Bis hierher
+// stand die Liste als festes Array unten im Code — siehe instancesMod weiter
+// unten, dort steht, was das ersetzt hat und warum.
+const instancesMod = require('./instances');
+// Ressourcenpakete: Ordner resourcepacks/ lesen, .zip importieren, loeschen und
+// — anders als bei den Mods — im Spiel ein- und ausschalten. Das Modul nimmt
+// einen absoluten Instanzordner und benutzt weder Fenster noch Dialog, damit
+// es unter reinem Node pruefbar bleibt (test-ressourcenpakete.js).
+const resourcepacks = require('./resourcepacks');
+// Modpack-Import: .mrpack (Modrinth) und CurseForge-Zips (manifest.json).
+// Das Modul ist frei von electron (test-modpack-import.js laeuft unter reinem
+// Node): hier stecken nur die IPC-Rahmen dazu — Dateidialog, Instanz-Anlage
+// und die echte Download-/SHA1-Logik, analog zu mods.js.
+const modpackImport = require('./modpackImport');
 
-const MODPACKS = [
-  { id: 'talberg', name: 'Talberg', version: '1.21.4', modloader: 'fabric', lastPlayed: new Date(Date.now() - 2 * 3600e3).toISOString(), iconUrl: null },
-  { id: 'vanilla-survival', name: 'Vanilla Survival', version: '1.21.4', modloader: 'vanilla', lastPlayed: new Date(Date.now() - 26 * 3600e3).toISOString(), iconUrl: null },
-  { id: 'atm10', name: 'All the Mods 10', version: '1.20.1', modloader: 'forge', lastPlayed: new Date(Date.now() - 5 * 86400e3).toISOString(), iconUrl: null },
-  { id: 'create-ab', name: 'Create: Above and Below', version: '1.20.1', modloader: 'forge', lastPlayed: new Date(Date.now() - 12 * 86400e3).toISOString(), iconUrl: null }
-];
+// userData einmal holen. Der Pfad steckt in fast jedem Aufruf weiter unten.
+function userData() {
+  return app.getPath('userData');
+}
 
 const instanceStatus = {};       // instanceId -> 'idle' | 'starting' | 'running' | 'crashed'
 let activeRunningId = null;      // nur eine Instanz gleichzeitig "läuft", wie bei echten Launchern üblich
@@ -142,8 +160,82 @@ function createProgressForwarder(webContents, instanceId) {
 }
 
 function registerIpcHandlers() {
-  // ---------- instances (lauffähiger Demo-Stub, mehrere Modpacks) ----------
-  ipcMain.handle('instances:list', async () => MODPACKS);
+  // ---------- Modpacks ----------
+  //
+  // Bis hierher stand hier ein festes Array `MODPACKS` mit vier erfundenen
+  // Eintraegen, zurueckgegeben von einem Handler, der sonst nichts konnte.
+  // Daraus folgt, dass kein neues Modpack entstehen konnte, keines
+  // verschwinden konnte, und `lastPlayed` bei jedem Start des Launchers neu
+  // berechnet wurde - es stand dort `Date.now() - 2 * 3600e3`, also immer
+  // "vor zwei Stunden", egal ob jemals gespielt wurde.
+  //
+  // Jetzt: instancesMod liest die Ordner unter %APPDATA%/instances/ und deren
+  // instance.json. Ein Ordner, der ohne instance.json dasteht (Altbestand),
+  // wird erkannt, aber NICHT beim Lesen beschrieben - siehe instances.js.
+
+  /**
+   * Einen Modpack fuer den Start holen, mit klarer Meldung statt undefined.
+   */
+  function modpackSuchen(instanceId) {
+    const treffer = instancesMod.listen(userData()).find((m) => m.id === instanceId);
+    if (!treffer) throw new Error(`Unbekanntes Modpack: ${instanceId}`);
+    return treffer;
+  }
+
+  ipcMain.handle('instances:list', async () => instancesMod.listen(userData()));
+
+  ipcMain.handle('instances:create', async (event, angabe) =>
+    instancesMod.anlegen(userData(), angabe || {}));
+
+  ipcMain.handle('instances:rename', async (event, instanceId, name) =>
+    instancesMod.umbenennen(userData(), instanceId, name));
+
+  ipcMain.handle('instances:setTechnik', async (event, instanceId, angabe) =>
+    instancesMod.technikSetzen(userData(), instanceId, angabe || {}));
+
+  ipcMain.handle('instances:duplicate', async (event, instanceId, name) =>
+    instancesMod.duplizieren(userData(), instanceId, name));
+
+  ipcMain.handle('instances:remove', async (event, instanceId) => {
+    // Ein laufendes Spiel darf nicht unter den Fuessen weg geloescht werden:
+    // die JVM schreibt weiter in Saves, Mods und Logs, und das Ergebnis waere
+    // eine halb geschriebene Welt. Deshalb hier die Pruefung und NICHT
+    // weiter unten im Modul - dort koennte man sie leicht umgehen.
+    if (activeRunningId === instanceId || instanceStatus[instanceId] === 'running' ||
+        instanceStatus[instanceId] === 'starting') {
+      throw new Error('Dieses Modpack laeuft gerade. Erst beenden, dann loeschen.');
+    }
+    if (runningProcesses.has(instanceId)) {
+      throw new Error('Dieses Modpack laeuft gerade. Erst beenden, dann loeschen.');
+    }
+    return instancesMod.entfernen(userData(), instanceId);
+  });
+
+  // Versionsliste fuer den Dialog "Neues Modpack". Aus dem echten
+  // Manifest von Mojang, nicht aus einer Liste im Code: eine Liste hier
+  // koennte nur so alt sein wie die letzte Anpassung, und dann schlaegt der
+  // Start mit einer Version fehl, die es nicht gibt.
+  ipcMain.handle('instances:versions', async () => {
+    const manifest = await getVersionManifest();
+    if (!manifest || !Array.isArray(manifest.versions)) return [];
+    // Release-Versionen zuerst, und innerhalb einer Reihe das neueste zuerst.
+    const heute = Date.now();
+    return manifest.versions
+      .filter((v) => v && typeof v.id === 'string')
+      .map((v) => ({
+        id: v.id,
+        typ: v.type === 'release' ? 'release' : (v.type === 'snapshot' ? 'snapshot' : 'old_beta'),
+        zeit: v.releaseTime ? Date.parse(v.releaseTime) : 0
+      }))
+      .sort((a, b) => {
+        // Nur die letzten Releases zeigen: die aeltesten Eintraege des
+        // Manifests sind Beta-Versionen von 2011, die niemand hier braucht.
+        if (a.typ !== b.typ) return a.typ === 'release' ? -1 : 1;
+        return b.zeit - a.zeit;
+      })
+      .filter((v) => v.typ === 'release' || v.zeit > heute - 1000 * 60 * 60 * 24 * 365)
+      .slice(0, 60);
+  });
 
   ipcMain.handle('instances:launch', async (event, arg) => {
     const webContents = event.sender;
@@ -157,8 +249,7 @@ function registerIpcHandlers() {
     const worldId = opts.worldId || null;
     const serverId = opts.serverId || null;
 
-    const modpack = MODPACKS.find(m => m.id === instanceId);
-    if (!modpack) throw new Error(`Unbekannte Instanz: ${instanceId}`);
+    const modpack = modpackSuchen(instanceId);
 
     if (activeRunningId && activeRunningId !== instanceId) {
       throw new Error('Es läuft bereits eine andere Instanz. Bitte zuerst beenden.');
@@ -167,8 +258,9 @@ function registerIpcHandlers() {
     if (current === 'running' || current === 'starting') return;
 
     broadcastStatus(webContents, instanceId, 'starting');
-    broadcastLog(webContents, instanceId,
-      `Starte „${modpack.name}" (${modpack.version}, ${modpack.modloader}) …`);
+    // Die Zeile "Starte ..." kommt erst nach der Quick-Play- und der
+    // Versionspruefung - sonst stuende sie im Log, bevor klar ist, ob der
+    // Start ueberhaupt stattfindet.
 
     // ---- 0a) Quick-Play-Ziel prüfen ----
     // Muss VOR dem Download passieren: eine nicht existierende Welt oder ein
@@ -222,10 +314,57 @@ function registerIpcHandlers() {
       broadcastLog(webContents, instanceId, `Direkt in die Welt „${treffer.name}" starten.`);
     }
 
+    // ---- 0b) Startbarkeit des Modpacks prüfen ----
+    // Steht HINTER der Quick-Play-Pruefung und absichtlich nicht davor: wer
+    // auf "Verbinden" zu einem Server klickt, der nicht in der Liste steht,
+    // soll genau DAS erfahren und nicht "keine Version hinterlegt". Beides
+    // ist ein Fehler, aber nur einer davon betrifft die gerade geklickte
+    // Aktion. Und es steht trotzdem noch vor dem Download - ein 500-MB-
+    // Download fuer ein Modpack, das gar nicht starten kann, waere die
+    // teuerste denkbare Form von "das hat nicht geklappt".
+    if (!modpack.version) {
+      broadcastStatus(webContents, instanceId, 'idle');
+      throw new Error(
+        `Für „${modpack.name}" ist keine Minecraft-Version hinterlegt. ` +
+        'Bitte im Modpack die Version nachtragen, sonst lässt es sich nicht starten.'
+      );
+    }
+    broadcastLog(webContents, instanceId,
+      `Starte „${modpack.name}" (${modpack.version}, ${modpack.modloader}) …`);
+
+    // ---- Modloader bestimmen ----
+    // Fabric ist verdrahtet: die Loader-Version kommt aus der Instanz, sonst
+    // wird die neueste stabile von meta.fabricmc.net geholt und in der
+    // instance.json gemerkt, damit derselbe Stand beim naechsten Start
+    // wiederkommt. Forge bleibt vorerst beim ehrlichen Vanilla-Hinweis.
+    let loader = null;
     if (modpack.modloader && modpack.modloader !== 'vanilla') {
-      broadcastLog(webContents, instanceId,
-        `Hinweis: der Modloader „${modpack.modloader}" wird noch nicht geladen — ` +
-        'gestartet wird Vanilla. Mods im mods-Ordner bleiben daher ohne Wirkung.', 'warn');
+      if (modpack.modloader === 'fabric') {
+        let loaderVersion = modpack.loaderVersion || null;
+        if (!loaderVersion) {
+          try {
+            loaderVersion = await fabricLoader.empfohleneLoaderVersion(modpack.version);
+          } catch (err) {
+            broadcastStatus(webContents, instanceId, 'idle');
+            throw new Error(
+              `Fabric Loader konnte nicht ermittelt werden (${err.message}). ` +
+              'Bitte die Internetverbindung prüfen.'
+            );
+          }
+          try {
+            instancesMod.loaderVersionSetzen(userData(), instanceId, loaderVersion);
+          } catch (err) {
+            broadcastLog(webContents, instanceId,
+              `Fabric Loader ${loaderVersion} konnte nicht gespeichert werden (${err.message}).`, 'warn');
+          }
+          broadcastLog(webContents, instanceId, `Fabric Loader ${loaderVersion} wird verwendet.`);
+        }
+        loader = { art: 'fabric', version: loaderVersion };
+      } else {
+        broadcastLog(webContents, instanceId,
+          `Hinweis: der Modloader „${modpack.modloader}" wird noch nicht geladen — ` +
+          'gestartet wird Vanilla. Mods im mods-Ordner bleiben daher ohne Wirkung.', 'warn');
+      }
     }
 
     // ---- 0) Account prüfen und Token auffrischen ----
@@ -280,7 +419,8 @@ function registerIpcHandlers() {
     // gameDir ist der Instanzordner: saves/, mods/ und config/ landen damit
     // pro Instanz getrennt voneinander.
     const gameDir = instanceDir(instanceId);
-    const downloadResult = await ensureVersionFiles(modpack.version, createProgressForwarder(webContents, instanceId));
+    const downloadResult = await ensureVersionFiles(
+      modpack.version, createProgressForwarder(webContents, instanceId), loader);
 
     // ---- 3) Launch-Optionen zusammenbauen ----
     // RAM und Aufloesung kommen aus den Startoptionen DIESER Instanz. Vorher
@@ -342,12 +482,24 @@ function registerIpcHandlers() {
       clearTimeout(runningFallback);
       activeRunningId = instanceId;
       broadcastStatus(webContents, instanceId, 'running');
+      // "Zuletzt gespielt" wird genau hier festgehalten, und nicht schon beim
+      // Klick: process.js meldet 'running', sobald die erste echte Log-Zeile
+      // aus dem Spiel kommt. Ein Klick, bei dem der Download abbricht, ist
+      // kein gespielter Abend und darf den Eintrag nicht verschieben.
+      instancesMod.gespieltVermerken(userData(), instanceId);
     });
 
-    emitter.on('closed', ({ exitCode }) => {
+    emitter.on('closed', ({ exitCode, gewollt }) => {
       clearTimeout(runningFallback);
       finish('idle');
-      broadcastLog(webContents, instanceId, `Minecraft wurde beendet (Exit-Code ${exitCode}).`);
+      // Zwei Faelle, zwei woertlich verschiedene Zeilen. Der Exit-Code eines
+      // von uns abgebrochenen Spiels ist eine Nebensache und erzaehlt nichts
+      // ueber den Zustand — ihn in den Text zu setzen hiesse, die Zahl als
+      // Diagnose anzubieten. Bei einem Spiel, das sich selbst beendet hat,
+      // ist er die interessantere Angabe.
+      broadcastLog(webContents, instanceId, gewollt
+        ? 'Minecraft wurde beendet.'
+        : `Minecraft wurde beendet (Exit-Code ${exitCode}).`);
     });
 
     emitter.on('crashed', ({ exitCode, lastLogLines, error }) => {
@@ -647,13 +799,46 @@ function registerIpcHandlers() {
     }
   }
 
-  ipcMain.handle('mods:search', async (event, query) => {
+  /**
+   * Facets fuer die Modrinth-Suche.
+   *
+   * Bis hierher wurde nur `project_type:mod` gesendet, egal welches Modpack
+   * offen war. Die Anzeige listete damit die 20 meistgeladenen Mods
+   * ueberhaupt — in einem 1.20.1-Forge-Pack tauchen darin 1.21-Mods auf,
+   * und beim Klick auf "Installieren" laedt die jeweils neueste Datei, die
+   * das Spiel dann nicht laedt. Die Instanz kam als Parameter an und
+   * wurde nicht benutzt.
+   *
+   * Modrinth kennt die Spielversion als `versions:<id>` und den Loader als
+   * eigene Kategorie (`categories:fabric` usw.).
+   */
+  function modFacets(instanceId) {
+    const facets = ['project_type:mod'];
+    const modpack = instancesMod.listen(userData()).find(m => m.id === instanceId);
+    if (modpack) {
+      if (modpack.version) facets.push(`versions:${modpack.version}`);
+      // Vanilla hat keine Loader-Kategorie. Für ein Vanilla-Pack waere
+      // `categories:vanilla` eine erfundene Kategorie und Modrinth wuerde
+      // nach der falschen Schnittstelle suchen - dann lieber gar nicht.
+      if (modpack.modloader && modpack.modloader !== 'vanilla') {
+        facets.push(`categories:${modpack.modloader}`);
+      }
+    }
+    return encodeURIComponent(JSON.stringify([facets]));
+  }
+
+  ipcMain.handle('mods:search', async (event, query, instanceId) => {
     const q = (query || '').trim();
-    const facets = encodeURIComponent(JSON.stringify([['project_type:mod']]));
+    const facets = modFacets(instanceId);
     const url = q
       ? `${MODRINTH_BASE}/search?query=${encodeURIComponent(q)}&limit=20&facets=${facets}`
       : `${MODRINTH_BASE}/search?limit=20&index=downloads&facets=${facets}`;
     const data = await modrinthGet(url);
+    // N3: die Antwort ungeprueft zu verwenden war ein Fehler. `hits` fehlt,
+    // wenn Modrinth einmal ein anderes Format liefert, und `.map` darauf
+    // wirft dann im Renderer einen TypeError, der als "Suche geht nicht"
+    // ankommt statt als "Netzwerk antwortete komisch".
+    if (!data || !Array.isArray(data.hits)) return [];
     return data.hits.map(hit => ({
       id: hit.project_id,
       name: hit.title,
@@ -668,9 +853,18 @@ function registerIpcHandlers() {
   // DIESER Instanz ab (nicht mehr in einem gemeinsamen Demo-Ordner). Wird
   // sowohl für Neuinstallation als auch für "Update" genutzt.
   async function downloadModForInstance(instanceId, modId) {
-    const modpack = MODPACKS.find(m => m.id === instanceId);
-    const gameVersion = modpack ? modpack.version : null;
-    const loader = modpack ? modpack.modloader : null;
+    const modpack = modpackSuchen(instanceId);
+    const gameVersion = modpack.version;
+    const loader = modpack.modloader;
+    // Ohne Version laesst sich keine Mod-Datei auswaehlen: Modrinth liefert
+    // pro Spielversion eine eigene Datei, und ohne die Angabe wuerde hier
+    // stillschweigend die neueste geladen - die im Spiel dann nicht laedt.
+    if (!gameVersion) {
+      throw new Error(
+        `Für „${modpack.name}" ist keine Minecraft-Version hinterlegt. ` +
+        'Ohne diese Angabe lässt sich keine passende Mod-Datei wählen.'
+      );
+    }
 
     const project = await modrinthGet(`${MODRINTH_BASE}/project/${modId}`);
 
@@ -720,7 +914,12 @@ function registerIpcHandlers() {
       version: version.version_number,
       gameVersion: gameVersion || '—',
       loader: loader || '—',
-      compatible
+      compatible,
+      // Das Projektbild von Modrinth mitschreiben, damit die Liste der
+      // installierten Mods dasselbe Bild zeigt wie das Suchergebnis. Aeltere
+      // Eintraege in mods-meta.json haben das Feld nicht - renderInstalled
+      // faellt dann auf das allgemeine Symbol zurueck.
+      iconUrl: project.icon_url || null
     };
   }
 
@@ -817,6 +1016,41 @@ function registerIpcHandlers() {
     return { id: `local:${fileName}`, name: fileName, source: 'local', filename: fileName };
   });
 
+  // ---------- packs (Ressourcenpakete) ----------
+  // Der Ordner resourcepacks/ ist hier genauso die Wahrheit wie der mods-Ordner
+  // bei den Mods: was nicht darin liegt, existiert fuer das Spiel nicht. Was
+  // hinzukommt, ist der Schalter — er steht in options.txt und nicht in einer
+  // eigenen Datei, weil das Spiel genau dort hinschaut.
+  //
+  // Der Instanzordner wird einmal geholt und durchgereicht; resourcepacks.js
+  // braucht den absoluten Pfad und kennt selbst nichts von app.getPath().
+  function packsInstance(instanceId) {
+    return instanceDir(instanceId);
+  }
+
+  ipcMain.handle('packs:list', async (event, instanceId) =>
+    resourcepacks.listPacks(packsInstance(instanceId)));
+
+  ipcMain.handle('packs:setActive', async (event, instanceId, id, an) =>
+    resourcepacks.setPackAktiv(packsInstance(instanceId), id, Boolean(an)));
+
+  ipcMain.handle('packs:remove', async (event, instanceId, id) =>
+    resourcepacks.removePack(packsInstance(instanceId), id));
+
+  // Echter Datei-Import, ohne Netzwerk. Der Fenstertitel kommt aus dem
+  // Renderer, damit er uebersetzt wird — mods:importLocal hardcodiert ihn
+  // noch, das ist aber eine andere Baustelle.
+  ipcMain.handle('packs:importLocal', async (event, instanceId, titel) => {
+    const win = require('electron').BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(win, {
+      title: titel || 'Ressourcenpaket auswählen',
+      filters: [{ name: 'Minecraft Ressourcenpakete', extensions: ['zip'] }],
+      properties: ['openFile']
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return resourcepacks.importZip(packsInstance(instanceId), result.filePaths[0]);
+  });
+
   // ---------- servers ----------
   // Pro Instanz eine servers.json mit den eingetragenen Adressen. Dazu kommt
   // der echte Ping: MOTD, Spielerzahl, Version und Latenz kommen direkt vom
@@ -824,10 +1058,28 @@ function registerIpcHandlers() {
   function serversPath(instanceId) {
     return path.join(instanceDir(instanceId), 'servers.json');
   }
+  /**
+   * Serverliste lesen.
+   *
+   * Das JSON wird ungeprueft zurueckgegeben — das war ein Fehler. Eine
+   * servers.json, die ein Objekt statt eines Arrays enthaelt (etwa
+   * `{"servers": [...]}`, was ein aelterer Stand geschrieben hat), kam
+   * hier als Objekt heraus. `servers:add` rief darauf `.push()` auf und
+   * warf `TypeError: push is not a function`, `servers:remove` rechnete mit
+   * `length` und einem Filter auf einem Objekt, und der Zaehler im UI kam
+   * auf `undefined` und zeigte "undefined" an.
+   *
+   * 40 Zeilen weiter unten, in der Widget-Ausgabe, steht dieselbe Datei
+   * richtig: erst prüfen, dass es ein Array ist, sonst `[]`. Diese beiden
+   * Stellen sind jetzt auf dieselbe Art abgesichert.
+   */
   function loadServers(instanceId) {
     try {
-      return JSON.parse(fs.readFileSync(serversPath(instanceId), 'utf-8'));
+      const roh = JSON.parse(fs.readFileSync(serversPath(instanceId), 'utf-8'));
+      return Array.isArray(roh) ? roh : [];
     } catch {
+      // Datei fehlt oder ist kaputt: eine leere Liste ist der einzige
+      // Zustand, in dem sich die Oberflaeche weiterarbeiten laesst.
       return [];
     }
   }
@@ -962,11 +1214,101 @@ function registerIpcHandlers() {
     return instSettingsAntwort(instanceId, geprueft.settings);
   });
 
-  // ---------- skins (Platzhalter, wartet auf Team 2 / skins.js + Mojang Services API) ----------
-  ipcMain.handle('skins:getActive', async () => null);
-  ipcMain.handle('skins:upload', () =>
-    Promise.reject(new Error('skins.js ist noch nicht implementiert (Team 2).'))
-  );
+  // ---------- skins ----------
+  // Was hier passiert, ist die ANZEIGE im Launcher: eine eigene Skin-PNG
+  // auswaehlen, im App-Datenordner ablegen und fuer Kopf-Anzeige und
+  // gedrehte Vorschau benutzen (siehe Renderer, Abschnitt "Skin-Kopf").
+  //
+  // Was hier NICHT passiert: der echte Skin des Mojang-Accounts. Den
+  // aendert nur die Session API mit angemeldetem Microsoft-Konto, und der
+  // Login ist in dieser Version weiterhin blockiert (siehe README).
+  // Darum bleibt skins:setActive ein sprechender Reject.
+  const SKIN_ORDNER = path.join(userData(), 'skins');
+  const SKIN_DATEI = path.join(SKIN_ORDNER, 'skin.png');
+  const SKIN_MAX_BYTES = 2 * 1024 * 1024;
+
+  // PNG-Signatur plus IHDR-Masse: 64x64 (heutiges Format) oder 64x32 (alte
+  // Form ohne Aermel). Alles andere ist kein Skin - die Pruefung laeuft
+  // VOR dem Kopieren, damit hier nichts Fremdes im Datenordner landet.
+  function skinIstGueltig(puffer) {
+    if (!puffer || puffer.length < 24) return false;
+    const signatur = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    for (let i = 0; i < signatur.length; i++) if (puffer[i] !== signatur[i]) return false;
+    if (puffer.toString('ascii', 12, 16) !== 'IHDR') return false;
+    const breite = puffer.readUInt32BE(16);
+    const hoehe = puffer.readUInt32BE(20);
+    return breite === 64 && (hoehe === 64 || hoehe === 32);
+  }
+
+  ipcMain.handle('skins:upload', async (event) => {
+    const eltern = BrowserWindow.fromWebContents(event.sender);
+    const optionen = {
+      title: 'Skin-Datei auswaehlen',
+      properties: ['openFile'],
+      filters: [{ name: 'Skin (PNG)', extensions: ['png'] }]
+    };
+    const antwort = eltern ? await dialog.showOpenDialog(eltern, optionen)
+                           : await dialog.showOpenDialog(optionen);
+    if (antwort.canceled || !antwort.filePaths.length) return { abgebrochen: true };
+
+    const quelle = antwort.filePaths[0];
+    let puffer;
+    try {
+      puffer = fs.readFileSync(quelle);
+    } catch (err) {
+      return { fehler: 'Datei nicht lesbar: ' + (err && err.message) };
+    }
+    if (puffer.length === 0) return { fehler: 'Die Datei ist leer.' };
+    if (puffer.length > SKIN_MAX_BYTES) {
+      return { fehler: 'Zu gross: maximal ' + Math.round(SKIN_MAX_BYTES / 1024) + ' KB.' };
+    }
+    if (!skinIstGueltig(puffer)) {
+      return { fehler: 'Das ist keine Skin-PNG: erwartet werden 64x64 oder 64x32 Pixel.' };
+    }
+
+    try {
+      fs.mkdirSync(SKIN_ORDNER, { recursive: true });
+      fs.writeFileSync(SKIN_DATEI, puffer);
+    } catch (err) {
+      return { fehler: 'Speichern fehlgeschlagen: ' + (err && err.message) };
+    }
+    settingsStore = { ...settingsStore, skinDatei: 'skin.png' };
+    saveSettingsToDisk(settingsStore);
+    return { name: 'skin.png', dataUri: 'data:image/png;base64,' + puffer.toString('base64') };
+  });
+
+  // Die Bytes als Data-URI, gebaut wie schriften:lesen: nur die Datei, die
+  // auch wirklich eingestellt ist, und stiller Rueckfall auf null, wenn sie
+  // fehlt (geloeschter Ordner, kaputte Datei).
+  ipcMain.handle('skins:getActive', async () => {
+    if (!settingsStore.skinDatei) return null;
+    const datei = path.join(SKIN_ORDNER, path.basename(String(settingsStore.skinDatei)));
+    let puffer;
+    try {
+      puffer = fs.readFileSync(datei);
+    } catch {
+      return null;
+    }
+    if (!puffer.length || puffer.length > SKIN_MAX_BYTES || !skinIstGueltig(puffer)) return null;
+    return { name: path.basename(datei), dataUri: 'data:image/png;base64,' + puffer.toString('base64') };
+  });
+
+  // Eigene Datei wieder wegnehmen: Datei loeschen, Eintrag aus den
+  // Einstellungen streichen - danach faellt die Anzeige auf den
+  // Account-Skin zurueck (siehe skinTexturUrl() im Renderer).
+  ipcMain.handle('skins:vergessen', async () => {
+    try {
+      fs.unlinkSync(SKIN_DATEI);
+    } catch {
+      // weg ist kein Fehler: sie war schon nicht da
+    }
+    const neu = { ...settingsStore };
+    delete neu.skinDatei;
+    settingsStore = neu;
+    saveSettingsToDisk(settingsStore);
+    return null;
+  });
+
   ipcMain.handle('skins:setActive', () =>
     Promise.reject(new Error('skins.js ist noch nicht implementiert (Team 2).'))
   );
@@ -1006,6 +1348,316 @@ function registerIpcHandlers() {
   });
 
   // =================================================================
+  // Modpack-Import (modpackQuellen): .mrpack und CurseForge-Zips
+  // =================================================================
+  // Zwei Wege in eine neue Instanz: eine Datei von der Platte
+  // (`pruefen` + `importieren`, der uebliche Ablauf) und eine Suche auf
+  // Modrinth mit direktem Download der neuesten Version
+  // (`sucheModrinth` + `importiereModrinth`).
+  //
+  // Sicherheitsregeln, die hier gelten:
+  //   - Der Renderer nennt NIEMALS einen Dateipfad. `pruefen` oeffnet den
+  //     nativen Dialog und merkst sich die Auswahl im Hauptprozess
+  //     (`letzteModpackAuswahl`); `importieren` nimmt nur noch den Namen.
+  //     So kann das UI keine beliebige Datei des Systems importieren
+  //     lassen — dieselbe Entscheidung wie bei packs:importLocal.
+  //   - Zip-Slip: alle Pfade im Zip werden VOR dem Schreiben geprueft
+  //     (modpackImport), ein unsicherer Pfad lehnt die ganze Datei ab.
+  //   - quilt/neoforge: ein Modpack, das sie verlangt, wird ehrlich
+  //     abgelehnt — die Startkette kennt nur vanilla/fabric/forge
+  //     (instances.js, MODLOADER).
+  //   - CurseForge-Suche nur mit API-Schluessel (Einstellung
+  //     `curseforgeApiKey`); der Datei-Import funktioniert ohne ihn,
+  //     solange die manifest.json downloadUrl-Eintraege mitbringt.
+  let letzteModpackAuswahl = null;
+
+  function curseforgeApiKey() {
+    const schluessel = settingsStore.curseforgeApiKey;
+    return typeof schluessel === 'string' && schluessel.trim() ? schluessel.trim() : null;
+  }
+
+  // Datei ueber echte HTTP-Anfrage laden und mit der erwarteten SHA1-
+  // Pruefsumme verifizieren — das Gegenstueck zu downloadModForInstance,
+  // nur fuer den allgemeinen Fall des Modpack-Imports.
+  async function modpackLadeDatei(url, sha1Soll, zielPfad) {
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, redirect: 'follow' });
+    if (!res.ok) {
+      throw new Error(`Download fehlgeschlagen (HTTP ${res.status}) fuer ${url}`);
+    }
+    // Eine Webseite statt einer Datei (z. B. gesperrter CurseForge-Download)
+    // waere sonst als kaputte .jar im Modsordner gelandet.
+    const typ = String((res.headers && typeof res.headers.get === 'function' && res.headers.get('content-type')) || '');
+    if (/^text\/html/i.test(typ)) {
+      throw new Error(`Der Server liefert eine Webseite statt einer Datei (vermutlich vom Autor fuer externe Downloads gesperrt): ${url}`);
+    }
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (sha1Soll) {
+      const echt = crypto.createHash('sha1').update(buffer).digest('hex');
+      if (echt !== sha1Soll) {
+        throw new Error(`Pruefsumme stimmt nicht ueberein (erwartet ${sha1Soll.slice(0, 8)}…, geladen ${echt.slice(0, 8)}…)`);
+      }
+    }
+    fs.mkdirSync(path.dirname(zielPfad), { recursive: true });
+    fs.writeFileSync(zielPfad, buffer);
+    // Dateiname aus der Endadresse nach den Weiterleitungen: bei CurseForge
+    // ohne API-Schluessel kennt man ihn erst jetzt.
+    let dateiname = null;
+    try {
+      const letzter = String(res.url || '').split('?')[0];
+      dateiname = decodeURIComponent(letzter.slice(letzter.lastIndexOf('/') + 1)) || null;
+    } catch { /* Name bleibt unbekannt */ }
+    return { dateiname };
+  }
+
+  // CurseForge-Datei ueber die API aufloesen (nur mit API-Schluessel).
+  async function curseForgeLoeseUrl(projektId, dateiId) {
+    const schluessel = curseforgeApiKey();
+    if (!schluessel) return null;
+    const res = await fetch(`https://api.curseforge.com/v1/mods/${projektId}/files/${dateiId}`, {
+      headers: { 'x-api-key': schluessel, 'User-Agent': USER_AGENT }
+    });
+    if (!res.ok) {
+      throw new Error(`CurseForge-Datei nicht aufloesbar (HTTP ${res.status}) fuer Projekt ${projektId}, Datei ${dateiId}`);
+    }
+    const daten = await res.json();
+    const datei = daten && daten.data;
+    if (!datei || typeof datei.downloadUrl !== 'string') {
+      throw new Error(`CurseForge liefert keine Download-Adresse fuer Projekt ${projektId}, Datei ${dateiId}.`);
+    }
+    const sha1 = (Array.isArray(datei.hashes)
+      ? datei.hashes.find((h) => h && h.algo === 1)
+      : null);
+    return {
+      url: datei.downloadUrl,
+      dateiname: typeof datei.fileName === 'string' ? datei.fileName : null,
+      sha1: sha1 && typeof sha1.value === 'string' ? sha1.value : null
+    };
+  }
+
+  // Nichts installiert und nur Fehler: das Modpack ist nicht brauchbar.
+  // Frueher blieb dann eine leere Instanz zurueck, die wie ein erfolgreicher
+  // Import aussah.
+  function importGescheitert(ergebnis) {
+    return Boolean(ergebnis) && ergebnis.installiert === 0 && Array.isArray(ergebnis.fehler) && ergebnis.fehler.length > 0;
+  }
+
+  // Gemeinsamer Abschluss eines Imports: Instanz anlegen (mit der
+  // MINECRAFT-Version, nicht der Pack-Version — die Startkette braucht
+  // sie), dann installieren. Liefert das, was das UI braucht, oder
+  // { ok:false, fehler } statt einer Ausnahme.
+  async function importAusInfo(info, name) {
+    if (!info || info.format === null) {
+      return { ok: false, fehler: (info && info.fehler) || 'Keine Modpack-Datei ausgewaehlt.' };
+    }
+    if (!modpackImport.STARTER_LOADER.includes(info.modloader)) {
+      return {
+        ok: false,
+        fehler: `Dieses Modpack verlangt den Modloader "${info.modloader || 'unbekannt'}". ` +
+          `Der Launcher kann nur ${modpackImport.STARTER_LOADER.join(', ')} starten.`
+      };
+    }
+    if (!info.minecraft) {
+      return {
+        ok: false,
+        fehler: 'Das Modpack nennt keine Minecraft-Version — ohne sie laesst sich keine Instanz anlegen.'
+      };
+    }
+    const instanz = instancesMod.anlegen(userData(), {
+      name: (name && String(name).trim()) || info.name || 'Importiertes Modpack',
+      version: info.minecraft,
+      modloader: info.modloader === 'vanilla' ? 'vanilla' : info.modloader
+    });
+    const zielDir = instancesMod.instanceDir(userData(), instanz.id);
+    return { ok: true, instanz, zielDir };
+  }
+
+  ipcMain.handle('modpackQuellen:pruefen', async (event) => {
+    const win = event && event.sender
+      ? require('electron').BrowserWindow.fromWebContents(event.sender)
+      : null;
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Modpack-Datei auswählen',
+      filters: [
+        { name: 'Modpacks', extensions: ['mrpack', 'zip'] },
+        { name: 'Alle Dateien', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    letzteModpackAuswahl = result.filePaths[0];
+    return modpackImport.modpackAusDatei(letzteModpackAuswahl);
+  });
+
+  ipcMain.handle('modpackQuellen:importieren', async (event, name) => {
+    if (!letzteModpackAuswahl) {
+      throw new Error('Keine Modpack-Datei gewaehlt. Erst "Modpack importieren" und eine Datei aussuchen.');
+    }
+    const pfad = letzteModpackAuswahl;
+    letzteModpackAuswahl = null; // ein Import gilt nur einmal
+    const info = modpackImport.modpackAusDatei(pfad);
+    const geruest = await importAusInfo(info, name);
+    if (!geruest.ok) return geruest;
+
+    let ergebnis;
+    try {
+      if (info.format === 'mrpack') {
+        ergebnis = await modpackImport.installiereMrpack(geruest.zielDir, pfad, modpackLadeDatei, {});
+      } else if (info.format === 'prism') {
+        ergebnis = await modpackImport.installierePrism(geruest.zielDir, pfad, modpackLadeDatei, {});
+      } else {
+        ergebnis = await modpackImport.installiereCurseForge(
+          geruest.zielDir, pfad, curseforgeApiKey() ? curseForgeLoeseUrl : null,
+          modpackLadeDatei, { unterordner: 'mods' }
+        );
+      }
+    } catch (err) {
+      ergebnis = { installiert: 0, uebersprungen: 0, fehler: [(err && err.message) || String(err)], abgelehnt: false };
+    }
+
+    // Zip-Slip-Ablehnung: die Instanz ist bis hierher leer (es wurde nichts
+    // geschrieben), also zurueckbauen statt einen Geisterordner zu lassen.
+    if (ergebnis.abgelehnt || importGescheitert(ergebnis)) {
+      try { instancesMod.entfernen(userData(), geruest.instanz.id); } catch { /* Aufraeumen darf nicht werfen */ }
+      return { ok: false, fehler: [...ergebnis.fehler] };
+    }
+
+    return {
+      ok: true,
+      instanz: geruest.instanz,
+      format: info.format,
+      modpack: {
+        name: info.name,
+        version: info.version,
+        minecraft: info.minecraft,
+        modloader: info.modloader
+      },
+      ergebnis
+    };
+  });
+
+  ipcMain.handle('modpackQuellen:sucheModrinth', async (event, query) => {
+    try {
+      const q = String(query || '').trim();
+      const url = q
+        ? `${MODRINTH_BASE}/search?query=${encodeURIComponent(q)}&limit=10&facets=${encodeURIComponent(JSON.stringify([['project_type:modpack']]))}`
+        : `${MODRINTH_BASE}/search?limit=10&index=downloads&facets=${encodeURIComponent(JSON.stringify([['project_type:modpack']]))}`;
+      const data = await modrinthGet(url);
+      if (!data || !Array.isArray(data.hits)) return [];
+      return data.hits.map((hit) => ({
+        id: hit.project_id,
+        name: hit.title,
+        // `versions` ist die Liste der unterstuetzten SPIELversionen
+        // (aufsteigend) — die letzte ist also die neueste. Fallback auf den
+        // version-Id der zuletzt veroefentlichten Version.
+        version: Array.isArray(hit.versions) && hit.versions.length
+          ? hit.versions[hit.versions.length - 1]
+          : (hit.latest_version || null),
+        downloads: hit.downloads
+      }));
+    } catch (err) {
+      // Netzwerkfehler sind hier ein normaler Zustand: die Suche soll eine
+      // Meldung zeigen koennen statt den ganzen Dialog platzen zu lassen.
+      return { fehler: (err && err.message) || String(err) };
+    }
+  });
+
+  ipcMain.handle('modpackQuellen:importiereModrinth', async (event, projektId) => {
+    const id = String(projektId || '');
+    let tempDatei = null;
+    try {
+      if (!id) return { ok: false, fehler: 'Kein Modrinth-Projekt angegeben.' };
+      const projekt = await modrinthGet(`${MODRINTH_BASE}/project/${id}`);
+      const versionen = await modrinthGet(`${MODRINTH_BASE}/project/${id}/version`);
+      if (!Array.isArray(versionen) || !versionen.length) {
+        return { ok: false, fehler: `Fuer "${projekt.title}" gibt es keine Versionen.` };
+      }
+      // Nicht auf die Reihenfolge der API vertrauen: explizit nach
+      // Veroeffentlichung sortieren und die neueste nehmen.
+      const neueste = [...versionen].sort((a, b) =>
+        new Date(b.date_published) - new Date(a.date_published))[0];
+      const datei = neueste.files.find((f) => f.primary && /\.mrpack$/i.test(f.filename))
+        || neueste.files.find((f) => /\.mrpack$/i.test(f.filename));
+      if (!datei) {
+        return { ok: false, fehler: `Version "${neueste.version_number}" von "${projekt.title}" enthaelt kein .mrpack.` };
+      }
+
+      const res = await fetch(datei.url, { headers: { 'User-Agent': USER_AGENT } });
+      if (!res.ok) {
+        return { ok: false, fehler: `Download fehlgeschlagen (HTTP ${res.status}) fuer ${datei.filename}.` };
+      }
+      const bytes = Buffer.from(await res.arrayBuffer());
+      if (datei.hashes && typeof datei.hashes.sha1 === 'string') {
+        const echt = crypto.createHash('sha1').update(bytes).digest('hex');
+        if (echt !== datei.hashes.sha1) {
+          return { ok: false, fehler: `Pruefsumme des .mrpack stimmt nicht ueberein — Download verworfen.` };
+        }
+      }
+
+      tempDatei = path.join(app.getPath('userData'), `import-${Date.now()}-${Math.round(Math.random() * 1e6)}.mrpack`);
+      fs.writeFileSync(tempDatei, bytes);
+
+      const info = modpackImport.modpackAusDatei(tempDatei);
+      const geruest = await importAusInfo(info);
+      if (!geruest.ok) return geruest;
+
+      const ergebnis = await modpackImport.installiereMrpack(geruest.zielDir, tempDatei, modpackLadeDatei, {});
+      if (ergebnis.abgelehnt || importGescheitert(ergebnis)) {
+        try { instancesMod.entfernen(userData(), geruest.instanz.id); } catch { /* s.o. */ }
+        return { ok: false, fehler: [...ergebnis.fehler] };
+      }
+      return {
+        ok: true,
+        instanz: geruest.instanz,
+        format: 'mrpack',
+        modpack: {
+          name: info.name,
+          version: info.version,
+          minecraft: info.minecraft,
+          modloader: info.modloader
+        },
+        ergebnis
+      };
+    } catch (err) {
+      return { ok: false, fehler: (err && err.message) || String(err) };
+    } finally {
+      if (tempDatei) {
+        try { fs.unlinkSync(tempDatei); } catch { /* die Temp-Datei muss nicht ueberleben */ }
+      }
+    }
+  });
+
+  ipcMain.handle('modpackQuellen:sucheCurseForge', async (event, query) => {
+    // Ohne API-Schluessel gibt es keine CurseForge-Suche — das ist die
+    // ehrliche Grenze dieser Schnittstelle (siehe README).
+    const schluessel = curseforgeApiKey();
+    if (!schluessel) {
+      return { fehler: 'Für die CurseForge-Suche wird ein API-Schlüssel benötigt.' };
+    }
+    try {
+      const q = String(query || '').trim();
+      const url = `https://api.curseforge.com/v1/mods/search?gameId=432&classId=4471&searchFilter=${encodeURIComponent(q)}&pageSize=10`;
+      const res = await fetch(url, { headers: { 'x-api-key': schluessel, 'User-Agent': USER_AGENT } });
+      if (!res.ok) {
+        return { fehler: `CurseForge-Suche fehlgeschlagen (HTTP ${res.status}).` };
+      }
+      const daten = await res.json();
+      if (!daten || !Array.isArray(daten.data)) return [];
+      return daten.data.map((m) => ({
+        id: m.id,
+        name: m.name,
+        version: (Array.isArray(m.gameVersionLatestFiles) && m.gameVersionLatestFiles[0])
+          ? m.gameVersionLatestFiles[0].gameVersion
+          : ((m.latestFiles && m.latestFiles[0] && Array.isArray(m.latestFiles[0].gameVersions))
+              ? m.latestFiles[0].gameVersions[0]
+              : null),
+        downloads: m.downloadCount
+      }));
+    } catch (err) {
+      return { fehler: (err && err.message) || String(err) };
+    }
+  });
+
+  // =================================================================
   // Widgets
   // =================================================================
   // Eingebaute Widgets liegen im Projektordner neben src/, eigene in
@@ -1027,8 +1679,73 @@ function registerIpcHandlers() {
   // was nicht aus dieser einen Zahl folgt.
   const GESTARTET_AM = Date.now();
 
+  // ------------------------------------------------------------------
+  // Java-Erkennung fuer die Widget-Kachel "Java"
+  // ------------------------------------------------------------------
+  // detectJava startet echte Prozesse (reg query, java -version). Beim
+  // Zeichnen einer Kachel darf nichts spawnen, deshalb: der Aufruf laeuft
+  // im Hintergrund, das Ergebnis liegt bis zu 10 Minuten im Speicher, und
+  // bei gleicher Zielversion wird erneut nichts gestartet.
+  //
+  // status ist immer einer von vier Werten - "gefunden", "keine",
+  // "suchend" (gerade oder ohne Ergebnis), "unbekannt" (keine Zielversion).
+  // Keiner davon ist geschaetzt.
+  const JAVA_TTL_MS = 10 * 60 * 1000;
+  let javaZustand = { major: null, erkannt: null, status: 'unbekannt', zeit: 0, laeuft: false };
+
+  function javaSucheStarten(major) {
+    if (javaZustand.laeuft) return;
+    if (javaZustand.major === major && Date.now() - javaZustand.zeit < JAVA_TTL_MS) return;
+    javaZustand = { major: major, erkannt: null, status: 'suchend', zeit: Date.now(), laeuft: true };
+    detectJava(major)
+      .then((r) => {
+        const erkannt = r && r.found && typeof r.version === 'number' ? r.version : null;
+        javaZustand = {
+          major,
+          erkannt,
+          status: erkannt !== null ? 'gefunden' : 'keine',
+          zeit: Date.now(),
+          laeuft: false
+        };
+      })
+      .catch(() => {
+        // Kein Ergebnis heisst nicht "keine Java gefunden" - deshalb
+        // "unbekannt" und erst nach Ablauf der Frist ein neuer Versuch.
+        javaZustand = { major, erkannt: null, status: 'unbekannt', zeit: Date.now(), laeuft: false };
+      });
+  }
+
+  function javaInfoFuer(version) {
+    if (typeof version !== 'string' || !version) {
+      return { majorErforderlich: null, erkannt: javaZustand.erkannt, status: 'unbekannt' };
+    }
+    const major = requiredJavaMajor(version);
+    javaSucheStarten(major);
+    return { majorErforderlich: major, erkannt: javaZustand.erkannt, status: javaZustand.status };
+  }
+
+  // Laufende Spiel-Prozesse als reine Anzeige-Daten: Instanz, Startzeit,
+  // RAM-Bereich. Bewusst OHNE cwd und mainClass - beides sind Pfade bzw.
+  // interne Angaben, die eine Kachel nicht braucht.
+  function aktuelleProzesse() {
+    try {
+      return getActiveProcesses().map((p) => ({
+        instanz: p.instanceId,
+        seit: p.startTime,
+        laeuftSeitMs: p.uptime,
+        ramMin: p.ramMin,
+        ramMax: p.ramMax
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+
   ipcMain.handle('widgets:list', async () => {
-    return widgetsMod.listeWidgets(widgetWurzeln());
+    // Die Sprache kommt aus den Einstellungen, damit Titel und Beschreibung
+    // im Widget-Verzeichnis mit der Oberflaeche wechseln.
+    return widgetsMod.listeWidgets(widgetWurzeln(), settingsStore.language || 'de');
   });
 
   ipcMain.handle('widgets:html', async (event, id) => {
@@ -1055,25 +1772,60 @@ function registerIpcHandlers() {
     let server = [];
     let aktiveInstanz = null;
 
+    // D4: Werte, die nur von der gewaehlten Instanz abhaengen. Fehlt eine
+    // Instanz, bleiben sie alle null - "keine Instanz gewaehlt" ist etwas
+    // anderes als "0 Bytes".
+    let instanzGroesse = null;
+    let modsGroesse = null;
+    let ressourcenpaketeAnzahl = null;
+    let instanzRam = null;
+    let javaInfo = { majorErforderlich: null, erkannt: null, status: 'unbekannt' };
+    let instanzVersion = null;
+
     if (typeof instanceId === 'string' && instanceId) {
       aktiveInstanz = instanceId;
-      try { welten = worlds.listWorlds(instanceDir(instanceId)); } catch { welten = []; }
+      const dir = instanceDir(instanceId);
+      try { welten = worlds.listWorlds(dir); } catch { welten = []; }
       try { modAnzahl = listInstalledMods(instanceId).length; } catch { modAnzahl = 0; }
       try {
         const roh = JSON.parse(fs.readFileSync(serversPath(instanceId), 'utf-8'));
         server = Array.isArray(roh) ? roh : (roh && Array.isArray(roh.servers) ? roh.servers : []);
       } catch { server = []; }
+
+      instanzGroesse = systemdaten.ordnerGroesse(dir);
+      modsGroesse = systemdaten.ordnerGroesse(path.join(dir, 'mods'));
+      // Anzahl der Eintraege in resourcepacks/ - bewusst nicht listPacks():
+      // das Modul liest fuer jeden Eintrag pack.png als Data-URI, und fuer
+      // eine Zahl in einer Kachel braucht niemand ein Bild.
+      ressourcenpaketeAnzahl = systemdaten.anzahlEintraege(path.join(dir, 'resourcepacks'));
+      try {
+        const s = instSettings.loadSettings(dir);
+        instanzRam = { minGb: s.ramMinGb, maxGb: s.ramMaxGb };
+      } catch { instanzRam = null; }
+      try {
+        const i = instancesMod.holen(userData(), instanceId);
+        instanzVersion = i && typeof i.version === 'string' ? i.version : null;
+      } catch { instanzVersion = null; }
+      javaInfo = javaInfoFuer(instanzVersion);
     }
 
     return widgetsMod.filtereDatenFuerWidget({
       aktiveInstanz,
-      instanzen: MODPACKS.map(i => ({
-        id: i.id, name: i.name, version: i.version, modloader: i.modloader
+      instanzen: instancesMod.listen(userData()).map(i => ({
+        id: i.id, name: i.name, version: i.version, modloader: i.modloader,
+        // Ehrlich ermittelt (siehe instances.js): null, wenn nie gespielt.
+        lastPlayed: i.lastPlayed || null
       })),
       welten: welten.map(w => ({
+        // Die Feldnamen muessen zu dem passen, was worlds.js zurueckgibt
+        // (readWorldMeta). Dort heissen sie `broken`, `sizeBytes` und
+        // `iconDataUrl`. Mit `kaputt`, `groesse` und `schoen` kam hier
+        // ueberall undefined an, und die Kachel "Welten" zaehlte deshalb
+        // immer null kaputte Welten - egal wie viele es wirklich sind.
+        // Vergleiche worlds.js und widgets/welten.
         name: w.name, version: w.version, lastPlayed: w.lastPlayed,
-        groesse: w.groesse, gameTypeName: w.gameTypeName,
-        schoen: w.schoen, cheats: w.cheats, kaputt: w.kaputt
+        groesse: w.sizeBytes, gameTypeName: w.gameTypeName,
+        schoen: w.iconDataUrl, cheats: w.cheats, kaputt: w.broken
       })),
       modAnzahl,
       server: server.map(s => ({
@@ -1093,8 +1845,33 @@ function registerIpcHandlers() {
       // war in der ersten Fassung falsch, mit der Folge, dass die Uhr
       // unabhaengig von der eingestellten Sprache immer Deutsch zeigte.
       // "de" ist als toLocaleTimeString-Argument gueltig.
-      sprache: settingsStore.language || 'de'
+      sprache: settingsStore.language || 'de',
+
+      // ---- D4: messbare Werte (Positivliste in widgets.js) --------------
+      // Der leichte Teil (system, cpuLast, laufwerk) steht auch hier, damit
+      // die Kacheln beim ersten Zeichnen nicht auf den ersten Takt warten
+      // muessen. Ab dann aendert er sich ueber widgets:systemdaten.
+      ...systemdaten.leicht(userData()),
+      launcherVersion: app.getVersion(),
+      netzwerk: systemdaten.netzwerkFelder(),
+      prozesse: aktuelleProzesse(),
+      instanzGroesse,
+      modsGroesse,
+      ressourcenpaketeAnzahl,
+      instanzRam,
+      javaInfo
     });
+  });
+
+  // Der leichte Kanal fuer den Renderer-Takt (widget-host.js, alle 4 s).
+  // Nur die Felder, die sich oft und billig aendern: CPU-Auslastung,
+  // freier RAM, Datentraeger, laufende Spiel-Prozesse. Ohne diese Aufteilung
+  // muesste beim Polling jedes Mal die ganze Kachel-Inhaltliste neu gelesen
+  // werden - inklusive Welten-NBT und mods-Ordner.
+  ipcMain.handle('widgets:systemdaten', async () => {
+    const leicht = systemdaten.leicht(userData());
+    leicht.prozesse = aktuelleProzesse();
+    return widgetsMod.filtereDatenFuerWidget(leicht);
   });
 
   // Den Ordner fuer eigene Widgets oeffnen. Wird er beim ersten Mal
@@ -1252,6 +2029,39 @@ function registerIpcHandlers() {
     delete settingsStore.eigeneSchrift;
     saveSettingsToDisk(settingsStore);
     return schriftMeldung(true);
+  });
+
+  // ---------- Screenshot der Launcher-Oberflaeche ----------
+  // Der Knopf im Schnellzugriff ruft diesen Kanal. Der Hauptprozess zeichnet
+  // das Fenster (webContents.capturePage) und legt das PNG im Datenordner
+  // unter screenshots/ ab. Der Renderer bekommt NUR den Dateinamen zurueck:
+  // kein fs, kein Pfad zum Schreiben, keine Bytes. Ein Screenshot ist eine
+  // Nebensache - schlaegt er fehl, antwortet der Kanal mit { ok:false }
+  // statt zu werfen, damit die Oberflaeche eine Zeile zeigen kann.
+  function screenshotOrdner() {
+    const ordner = path.join(app.getPath('userData'), 'screenshots');
+    fs.mkdirSync(ordner, { recursive: true });
+    return ordner;
+  }
+  ipcMain.handle('screenshot:capture', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || win.isDestroyed()) return { ok: false, fehler: 'Kein Fenster gefunden.' };
+      const bild = await win.webContents.capturePage();
+      if (bild.isEmpty()) return { ok: false, fehler: 'Das Fenster konnte nicht gezeichnet werden.' };
+      const jetzt = new Date();
+      const zz = (n) => String(n).padStart(2, '0');
+      const name = 'liquid-' + jetzt.getFullYear() + zz(jetzt.getMonth() + 1) + zz(jetzt.getDate())
+        + '-' + zz(jetzt.getHours()) + zz(jetzt.getMinutes()) + zz(jetzt.getSeconds()) + '.png';
+      fs.writeFileSync(path.join(screenshotOrdner(), name), bild.toPNG());
+      return { ok: true, datei: name };
+    } catch (err) {
+      return { ok: false, fehler: err && err.message ? err.message : 'Screenshot fehlgeschlagen.' };
+    }
+  });
+  ipcMain.handle('screenshot:openFolder', async () => {
+    const fehler = await shell.openPath(screenshotOrdner());
+    return { ok: !fehler, fehler: fehler || null };
   });
 }
 

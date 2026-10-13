@@ -5,6 +5,10 @@
 <meta charset="utf-8">
 <style>
   html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
+  /* Scrollleisten werden nirgends im Launcher gebraucht, also auch hier
+     keine. Siehe WIDGETS.md, Schritt 4 - der Host kann das nicht erzwingen. */
+  *{ scrollbar-width:none; }
+  *::-webkit-scrollbar{ width:0px; height:0px; }
   body { display:flex; align-items:center; justify-content:center; font-family:var(--ll-font, inherit);
          -webkit-user-select:none; user-select:none; }
   .mitte { text-align:center; }
@@ -21,6 +25,10 @@
   'use strict';
   var mitte = document.getElementById('mitte');
   var instanz = '';
+  var T = {};
+
+  function tx(k, f) { return (T && typeof T[k] === 'string' && T[k]) ? T[k] : f; }
+  function txZahl(k, f, n) { return tx(k, f).replace('{n}', n); }
 
   function melde(typ, felder) {
     try { parent.postMessage(Object.assign({ quelle: 'liquid-launcher-widget', typ: typ }, felder || {}), '*'); }
@@ -30,8 +38,8 @@
   function zeichne(d) {
     if (!d) { mitte.innerHTML = '<div class="lade">…</div>'; return; }
     if (!d.welten || !d.welten.length) {
-      mitte.innerHTML = '<div class="val">0</div><div class="lbl">Welten</div>' +
-        '<div class="zus">keine Spielstaende</div>';
+      mitte.innerHTML = '<div class="val">0</div><div class="lbl">' + tx('widget_worlds', 'Welten') + '</div>' +
+        '<div class="zus">' + tx('widget_worlds_none', 'keine Spielstände') + '</div>';
       return;
     }
     var gesamt = d.welten.length;
@@ -39,8 +47,8 @@
     var spielbar = gesamt - kaputt;
     mitte.innerHTML =
       '<div class="val">' + spielbar + '</div>' +
-      '<div class="lbl">Welten</div>' +
-      (kaputt > 0 ? '<div class="zus">' + kaputt + ' kaputt</div>' : '') +
+      '<div class="lbl">' + tx('widget_worlds', 'Welten') + '</div>' +
+      (kaputt > 0 ? '<div class="zus">' + txZahl('widget_worlds_broken', '{n} kaputt', kaputt) + '</div>' : '') +
       (instanz ? '' : '');
   }
 
@@ -52,6 +60,7 @@
       for (var k in d.daten) { if (k.indexOf('--') === 0) st.setProperty(k, d.daten[k]); }
     }
     if (d.typ === 'daten') {
+      if (d.texte) T = d.texte;
       if (d.daten && d.daten.aktiveInstanz) instanz = d.daten.aktiveInstanz;
       zeichne(d.daten);
     }

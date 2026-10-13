@@ -1,0 +1,26 @@
+{
+  "id": "speicher-welten",
+  "titel": {
+    "de": "Welten gesamt",
+    "en": "Worlds total",
+    "es": "Mundos en total",
+    "fr": "Mondes au total",
+    "pt": "Mundos no total",
+    "it": "Mondi in totale",
+    "pl": "Światy łącznie",
+    "tr": "Toplam dünyalar",
+    "ru": "Миры всего"
+  },
+  "beschreibung": {
+    "de": "Gesamtgrösse aller Spielstände der Instanz.",
+    "en": "Total size of all saves of the instance.",
+    "es": "Tamaño total de las partidas de la instancia.",
+    "fr": "Taille totale des sauvegardes de l’instance.",
+    "pt": "Tamanho total de todos os jogos guardados da instância.",
+    "it": "Dimensione totale di tutti i salvataggi dell'istanza.",
+    "pl": "Łączny rozmiar wszystkich zapisów instancji.",
+    "tr": "Örneğin tüm kayıtlarının toplam boyutu.",
+    "ru": "Общий размер всех сохранений инстанса."
+  },
+  "breite": 1
+}

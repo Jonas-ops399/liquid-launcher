@@ -52,7 +52,11 @@ widgets/
 <html><head><meta charset="utf-8">
 <style>
   /* transparent, sonst liegt ein weißes Rechteck auf dem Glas */
-  html, body { margin:0; height:100%; background:transparent; }
+  /* overflow:hidden + die Scrollleisten-Regel: eine Kachel ist 92px hoch,
+     alles Darueber wuerde abgeschnitten oder als Leiste am Rand sichtbar. */
+  html, body { margin:0; height:100%; background:transparent; overflow:hidden; }
+  *{ scrollbar-width:none; }
+  *::-webkit-scrollbar{ width:0px; height:0px; }
   body { display:flex; align-items:center; justify-content:center; font:22px sans-serif; }
 </style>
 </head><body>
@@ -163,12 +167,25 @@ window.addEventListener('message', function (ev) {
 | `server` | `[{ name, address, online, spieler, version, latenz, motd }]` |
 | `gestartetAm` | Zeitstempel, wann der Launcher gestartet wurde (Zahl in ms) |
 | `sprache` | Sprachcode, z.B. `"de"`, `"en"`, `"es"`, `"fr"` |
+| `system` | `{ plattform, release, arch, kerne, cpuTaktMhz, ramGesamt, ramFrei, ramBelegt, systemUptimeSek, zeitstempel }` — alles aus `os` |
+| `cpuLast` | CPU-Auslastung in Prozent; `null`, solange kein zweiter Messpunkt da ist |
+| `laufwerk` | `{ gesamt, frei }` in Bytes des Datenträgers mit den Welten, sonst `null` |
+| `netzwerk` | `[{ name, intern, adresse }]`, nur IPv4 |
+| `launcherVersion` | Version aus `package.json` |
+| `javaInfo` | `{ majorErforderlich, erkannt, status }` |
+| `instanzGroesse` | Bytes des Instanzordners (rekursiv gezählt), sonst `null` |
+| `modsGroesse` | Bytes des `mods`-Ordners (rekursiv), sonst `null` |
+| `ressourcenpaketeAnzahl` | Anzahl Einträge in `resourcepacks/`, sonst `null` |
+| `instanzRam` | `{ minGb, maxGb }` aus den Instanz-Einstellungen, sonst `null` |
+| `prozesse` | `[{ laeuftSeitMs }]` laufender Spiel-Prozesse (ohne `cwd`/`mainClass`) |
 
-Das sind **genau sieben Felder**. Die Liste ist eine Positivliste im
+Das sind **genau 18 Felder** (die letzten elf kamen mit Phase D4 dazu). Die Liste
+ist eine Positivliste im
 Hauptprozess; ein später ergänztes Feld geht nicht automatisch mit.
 
 **Zu `sprache`:** es ist ein Sprachcode, kein Locale wie `"de-DE"`. Die
-Einstellungen des Launchers speichern nur `"de"`, `"en"`, `"es"`, `"fr"`.
+Einstellungen des Launchers speichern `"de"`, `"en"`, `"es"`, `"fr"`, `"pt"`,
+`"it"`, `"pl"`, `"tr"` oder `"ru"`.
 Als Argument für `toLocaleTimeString` funktioniert `"de"` direkt.
 
 ```js
@@ -223,6 +240,13 @@ der App nicht erreichen.
 Es kann Daten **empfangen**, aber nichts **auslösen**. Es kann keine Instanz
 starten, keine Welt löschen, keine Einstellung ändern. Das ist Absicht: ein
 Widget ist ein Anzeigefeld, kein Bedienknopf.
+
+Dieselbe Grenze gilt für das Aussehen: Der Launcher kann die Scrollleisten
+in der Hauptseite per CSS ausblenden, in deinem Widget aber nicht. Ohne
+`allow-same-origin` erreicht `index.html` das Dokument im `iframe` nicht —
+weder `contentDocument` noch eine nachgeschobene `<style>`-Anweisung. Die
+beiden Zeilen aus Schritt 4 gehören deshalb in **jedes** Widget, auch in
+eingebaute. Nur `html, body` werden dabei berührt, nicht dein Inhalt.
 
 ---
 

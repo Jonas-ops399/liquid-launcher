@@ -1,0 +1,104 @@
+<!doctype html>
+<!--
+  Alle Werte kommen aus dem Datenkoffer des Hauptprozesses (Positivliste in
+  src/main/widgets.js) - nichts wird hier erdacht.
+
+  Quelle: os.networkInterfaces(), nur IPv4 - intern heisst Loopback und
+  zaehlt nicht als Anschluss nach aussen.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
+  /* Scrollleisten werden nirgends im Launcher gebraucht, also auch hier
+     keine. Siehe WIDGETS.md, Schritt 4 - der Host kann das nicht erzwingen. */
+  *{ scrollbar-width:none; }
+  *::-webkit-scrollbar{ width:0px; height:0px; }
+  body { display:flex; align-items:center; justify-content:center; font-family:var(--ll-font, inherit);
+         -webkit-user-select:none; user-select:none; }
+  .mitte { text-align:center; max-width:100%; padding:0 6px; }
+  .val { font-size:calc(24px * var(--ll-fs, 1)); font-weight:650; color:var(--ll-text-hi, #fff);
+         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .val.lang { font-size:calc(16px * var(--ll-fs, 1)); }
+  .lbl { font-size:calc(12px * var(--ll-fs, 1)); color:var(--ll-text-lo, rgba(255,255,255,.55)); margin-top:2px;
+         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .zus { font-size:calc(11px * var(--ll-fs, 1)); color:var(--ll-text-lo, rgba(255,255,255,.42)); margin-top:4px;
+         white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lade { font-size:calc(12px * var(--ll-fs, 1)); color:var(--ll-text-lo, rgba(255,255,255,.45)); }
+</style>
+</head>
+<body>
+<div class="mitte" id="mitte"><div class="lade">…</div></div>
+<script>
+(function () {
+  'use strict';
+  var mitte = document.getElementById('mitte');
+  var T = {};
+
+  function tx(k, f) { return (T && typeof T[k] === 'string' && T[k]) ? T[k] : f; }
+  // Benutzertext (Instanznamen u.a.) wird maskiert, bevor er ins HTML geht.
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function lade() { mitte.innerHTML = '<div class="lade">…</div>'; }
+  function zeile(val, lbl, zus, lang) {
+    mitte.innerHTML =
+      '<div class="val' + (lang ? ' lang' : '') + '">' + val + '</div>' +
+      '<div class="lbl">' + lbl + '</div>' +
+      (zus ? '<div class="zus">' + zus + '</div>' : '');
+  }
+  function sprVon(d) { return (d && typeof d.sprache === 'string' && d.sprache) ? d.sprache : 'de'; }
+  function bytesText(b, spr) {
+    if (typeof b !== 'number' || !isFinite(b) || b < 0) return null;
+    if (b >= 1e9) {
+      try { return (b / 1e9).toLocaleString(spr, { maximumFractionDigits: 1 }) + ' GB'; }
+      catch (e) { return (b / 1e9).toFixed(1) + ' GB'; }
+    }
+    if (b >= 1e6) return Math.round(b / 1e6) + ' MB';
+    if (b >= 1e3) return Math.round(b / 1e3) + ' KB';
+    return Math.round(b) + ' B';
+  }
+  function dauerText(ms) {
+    var sek = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(sek / 3600);
+    var m = Math.floor((sek % 3600) / 60);
+    if (h > 0) return h + ' h ' + m + ' min';
+    if (m > 0) return m + ' min ' + (sek % 60) + ' s';
+    return sek + ' s';
+  }
+  function melde(typ, felder) {
+    try { parent.postMessage(Object.assign({ quelle: 'liquid-launcher-widget', typ: typ }, felder || {}), '*'); }
+    catch (e) {}
+  }
+
+  function zeichne(d) {
+    if (!d || !Array.isArray(d.netzwerk)) { lade(); return; }
+    var extern = d.netzwerk.filter(function (e) { return e && e.intern === false; });
+    if (extern.length === 0) {
+      zeile('0', tx('widget_net', 'Netzwerk'), tx('widget_net_none', 'keine externen Schnittstellen'), false);
+      return;
+    }
+    var namen = [];
+    for (var i = 0; i < extern.length; i++) {
+      if (extern[i].name && namen.indexOf(extern[i].name) === -1) namen.push(extern[i].name);
+    }
+    zeile(String(extern.length), tx('widget_net', 'Netzwerk'), esc(namen.join(', ')), false);
+  }
+
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || d.quelle !== 'liquid-launcher') return;
+    if (d.typ === 'theme' && d.daten) {
+      var st = document.documentElement.style;
+      for (var k in d.daten) { if (k.indexOf('--') === 0) st.setProperty(k, d.daten[k]); }
+    }
+    if (d.typ === 'daten') { if (d.texte) T = d.texte; zeichne(d.daten); }
+  });
+
+  melde('anfrage');
+})();
+</script>
+</body>
+</html>

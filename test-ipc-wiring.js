@@ -92,6 +92,24 @@ const USER_DATA = path.join(os.tmpdir(), 'liquid-launcher-smoketest');
 // grundlos fehl.
 fs.rmSync(USER_DATA, { recursive: true, force: true });
 fs.mkdirSync(USER_DATA, { recursive: true });
+
+// Ein Modpack auf der Platte, so wie es nach dem ersten echten Start
+// aussieht: ein Ordner mit instance.json.
+//
+// Bis zum 28.09.2026 gab es im Code ein festes Array mit vier erfundenen
+// Modpacks, und instances:list gab das zurueck - unabhaengig von der Platte.
+// Jetzt liest instances.js die Ordner unter %APPDATA%/instances. Ohne diese
+// Zeile hier waere die Liste leer, und das waere auch richtig: es gibt
+// nichts, was man nicht selbst angelegt hat.
+fs.mkdirSync(path.join(USER_DATA, 'instances', 'talberg'), { recursive: true });
+fs.writeFileSync(
+  path.join(USER_DATA, 'instances', 'talberg', 'instance.json'),
+  JSON.stringify({
+    id: 'talberg', name: 'Talberg', version: '1.21.4', modloader: 'fabric',
+    iconUrl: null, createdAt: '2026-09-01T00:00:00.000Z'
+  }, null, 2),
+  'utf-8'
+);
 const electronEntry = require.resolve('electron');
 require.cache[electronEntry] = {
   id: electronEntry,
@@ -140,12 +158,80 @@ for (const required of ['instances:list', 'instances:launch', 'instances:stop'])
 }
 
 // 2) instances:list liefert die Modpacks, die das UI anzeigt.
+//
+// Bis 28.09.2026 stand hier nur "Array und nicht leer" - das hat die vier
+// festen Demo-Eintraege im Code bestaetigt und sonst nichts. Jetzt wird
+// geprueft, dass aus dem Ordner auf der Platte gelesen wird und dass die
+// Form fuer das UI stimmt.
 (async () => {
   const modpacks = await registered['instances:list']();
   console.log(`  Modpacks: ${modpacks.map(m => `${m.id} (${m.version})`).join(', ')}`);
   if (!Array.isArray(modpacks) || modpacks.length === 0) {
     problems.push('instances:list liefert keine Modpacks');
   }
+  if (modpacks.length && modpacks[0].id !== 'talberg') {
+    problems.push(`instances:list liest nicht die Platte: erstes Modpack ist "${modpacks[0].id}", erwartet "talberg"`);
+  }
+  // Was das UI tatsaechlich braucht. Ein Eintrag ohne version/modloader
+  // erzeugt in der Anzeige "undefined — undefined" und beim Start eine
+  // Befehlszeile ohne Classpath.
+  for (const m of modpacks) {
+    for (const feld of ['id', 'name', 'version', 'modloader']) {
+      if (typeof m[feld] !== 'string' || !m[feld]) {
+        problems.push(`Modpack ${m.id}: Feld "${feld}" fehlt oder ist leer`);
+      }
+    }
+    // Kein Pfad darf in den Renderer: siehe worlds.js, warum das dort auch
+    // so gehalten wird.
+    if (JSON.stringify(m).includes('\\\\') || JSON.stringify(m).includes('appData')) {
+      problems.push(`Modpack ${m.id} enthaelt einen Dateipfad im Renderer-Ergebnis`);
+    }
+  }
+  console.log('  OK   Modpack-Eintraege haben id, name, version, modloader');
+
+  // 2b) Anlegen, umbenennen, duplizieren, loeschen - die Vertraege, an denen
+  // sich das UI die Waerter holt. Frueher gab es diese Kanaele gar nicht.
+  const neu = await registered['instances:create'](null, {
+    name: 'Smoke Test', version: '1.20.1', modloader: 'forge'
+  });
+  console.log(`  OK   instances:create -> ${neu.id}`);
+  if (neu.id !== 'smoke-test') problems.push(`instances:create ergab die ID "${neu.id}", erwartet "smoke-test"`);
+
+  const umbenannt = await registered['instances:rename'](null, 'smoke-test', 'Smoke Test 2');
+  if (umbenannt.name !== 'Smoke Test 2') problems.push('instances:rename hat den Namen nicht geaendert');
+  if (umbenannt.id !== 'smoke-test') problems.push('instances:rename hat den Ordner umbenannt');
+  console.log('  OK   instances:rename aendert den Namen, nicht den Ordner');
+
+  const kopie = await registered['instances:duplicate'](null, 'talberg');
+  if (!kopie || kopie.id === 'talberg') problems.push('instances:duplicate hat keine eigene ID vergeben');
+  console.log(`  OK   instances:duplicate -> ${kopie.id}`);
+
+  // Loeschen wird verweigert, solange das Modpack als laufend gefuehrt wird.
+  // Genau diese Sperre verhindert, dass waehrend eines Spiels der Ordner
+  // mit Welt und Mods verschwindet.
+  registered['instances:statusChange']; // Kanal existiert, wird hier nicht gebraucht
+  const vorherListe = await registered['instances:list']();
+  await registered['instances:remove'](null, 'smoke-test');
+  const nachherListe = await registered['instances:list']();
+  if (nachherListe.length !== vorherListe.length - 1) {
+    problems.push('instances:remove hat den Eintrag nicht entfernt');
+  }
+  if (nachherListe.some(m => m.id === 'smoke-test')) {
+    problems.push('instances:remove: das geloeschte Modpack steht noch in der Liste');
+  }
+  console.log('  OK   instances:remove entfernt Eintrag und Ordner');
+
+  // Und jetzt: an der Versionsliste darf nicht geraten werden.
+  for (const schlecht of [
+    { name: '', version: '1.21.4' },
+    { name: 'X', version: 'unsinn' },
+    { name: 'X', version: '1.21.4', modloader: 'quilt' }
+  ]) {
+    let abgelehnt = false;
+    try { await registered['instances:create'](null, schlecht); } catch { abgelehnt = true; }
+    if (!abgelehnt) problems.push(`instances:create hat ${JSON.stringify(schlecht)} angenommen`);
+  }
+  console.log('  OK   instances:create lehnt leere Namen, Unsinns-Versionen und unbekannte Modloader ab');
 
   // 3) Eine unbekannte Instanz muss sauber scheitern, nicht stillschweigend
   //    "starten" — sonst wuerde der UI-Bereit Status einen toten Start zeigen.

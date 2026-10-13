@@ -1,0 +1,26 @@
+{
+  "id": "java",
+  "titel": {
+    "de": "Java",
+    "en": "Java",
+    "es": "Java",
+    "fr": "Java",
+    "pt": "Java",
+    "it": "Java",
+    "pl": "Java",
+    "tr": "Java",
+    "ru": "Java"
+  },
+  "beschreibung": {
+    "de": "Welche Java-Version die Instanz braucht und welche gefunden wurde.",
+    "en": "Which Java version the instance needs and which was found.",
+    "es": "Qué versión de Java necesita la instancia y cuál se encontró.",
+    "fr": "Quelle version de Java l’instance demande et laquelle a été trouvée.",
+    "pt": "Que versão de Java a instância precisa e qual foi encontrada.",
+    "it": "Quale versione di Java serve all'istanza e quale è stata trovata.",
+    "pl": "Jakiej wersji Java potrzebuje instancja i którą znaleziono.",
+    "tr": "Örneğin hangi Java sürümüne ihtiyacı olduğu ve hangisinin bulunduğu.",
+    "ru": "Какая версия Java нужна инстансу и какая найдена."
+  },
+  "breite": 1
+}

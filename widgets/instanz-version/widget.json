@@ -1,0 +1,26 @@
+{
+  "id": "instanz-version",
+  "titel": {
+    "de": "Aktive Instanz",
+    "en": "Active instance",
+    "es": "Instancia activa",
+    "fr": "Instance active",
+    "pt": "Instância ativa",
+    "it": "Istanza attiva",
+    "pl": "Aktywna instancja",
+    "tr": "Etkin örnek",
+    "ru": "Активный инстанс"
+  },
+  "beschreibung": {
+    "de": "Minecraft-Version und Mod-Loader der aktiven Instanz.",
+    "en": "Minecraft version and mod loader of the active instance.",
+    "es": "Versión de Minecraft y mod loader de la instancia activa.",
+    "fr": "Version Minecraft et mod loader de l’instance active.",
+    "pt": "Versão do Minecraft e carregador de mods da instância ativa.",
+    "it": "Versione di Minecraft e mod loader dell'istanza attiva.",
+    "pl": "Wersja Minecraft i loader modów aktywnej instancji.",
+    "tr": "Etkin örneğin Minecraft sürümü ve mod yükleyici.",
+    "ru": "Версия Minecraft и загрузчик модов активного инстанса."
+  },
+  "breite": 1
+}

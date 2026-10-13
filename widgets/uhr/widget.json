@@ -1,6 +1,26 @@
 {
   "id": "uhr",
-  "titel": "Uhr",
-  "beschreibung": "Zeigt Uhrzeit und Datum im Format der eingestellten Sprache.",
+  "titel": {
+    "de": "Uhr",
+    "en": "Clock",
+    "es": "Reloj",
+    "fr": "Horloge",
+    "pt": "Relógio",
+    "it": "Orologio",
+    "pl": "Zegar",
+    "tr": "Saat",
+    "ru": "Часы"
+  },
+  "beschreibung": {
+    "de": "Zeigt Uhrzeit und Datum im Format der eingestellten Sprache.",
+    "en": "Shows the time and date in the format of the selected language.",
+    "es": "Muestra la hora y la fecha en el formato del idioma seleccionado.",
+    "fr": "Affiche l’heure et la date au format de la langue sélectionnée.",
+    "pt": "Mostra a hora e a data no formato do idioma selecionado.",
+    "it": "Mostra l'ora e la data nel formato della lingua selezionata.",
+    "pl": "Pokazuje godzinę i datę w formacie wybranego języka.",
+    "tr": "Saati ve tarihi seçili dilin biçiminde gösterir.",
+    "ru": "Показывает время и дату в формате выбранного языка."
+  },
   "breite": 1
 }

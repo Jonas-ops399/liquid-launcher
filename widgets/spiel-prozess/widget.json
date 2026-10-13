@@ -1,0 +1,26 @@
+{
+  "id": "spiel-prozess",
+  "titel": {
+    "de": "Spiel-Prozess",
+    "en": "Game process",
+    "es": "Proceso del juego",
+    "fr": "Processus du jeu",
+    "pt": "Processo do jogo",
+    "it": "Processo di gioco",
+    "pl": "Proces gry",
+    "tr": "Oyun süreci",
+    "ru": "Игровой процесс"
+  },
+  "beschreibung": {
+    "de": "Ob Minecraft gerade läuft und seit wann.",
+    "en": "Whether Minecraft is running, and since when.",
+    "es": "Si Minecraft está en marcha y desde cuándo.",
+    "fr": "Si Minecraft tourne, et depuis quand.",
+    "pt": "Se o Minecraft está em execução e desde quando.",
+    "it": "Se Minecraft è in esecuzione e da quando.",
+    "pl": "Czy Minecraft działa i od kiedy.",
+    "tr": "Minecraft'ın çalışıp çalışmadığı ve ne zamandan beri.",
+    "ru": "Запущен ли Minecraft и с какого времени."
+  },
+  "breite": 1
+}

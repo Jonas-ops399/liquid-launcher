@@ -1,0 +1,26 @@
+{
+  "id": "cpu-auslastung",
+  "titel": {
+    "de": "CPU-Auslastung",
+    "en": "CPU usage",
+    "es": "Uso de la CPU",
+    "fr": "Utilisation du CPU",
+    "pt": "Utilização da CPU",
+    "it": "Utilizzo della CPU",
+    "pl": "Użycie CPU",
+    "tr": "CPU kullanımı",
+    "ru": "Загрузка CPU"
+  },
+  "beschreibung": {
+    "de": "Auslastung seit dem letzten Messpunkt.",
+    "en": "Usage since the last measurement.",
+    "es": "Uso desde la última medición.",
+    "fr": "Utilisation depuis la dernière mesure.",
+    "pt": "Utilização desde a última medição.",
+    "it": "Utilizzo dall'ultima misurazione.",
+    "pl": "Użycie od ostatniego pomiaru.",
+    "tr": "Son ölçümden bu yana kullanım.",
+    "ru": "Загрузка с момента последнего замера."
+  },
+  "breite": 1
+}

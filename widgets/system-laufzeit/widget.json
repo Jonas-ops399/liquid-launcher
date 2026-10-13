@@ -1,0 +1,26 @@
+{
+  "id": "system-laufzeit",
+  "titel": {
+    "de": "Rechner läuft",
+    "en": "System running",
+    "es": "El equipo lleva",
+    "fr": "Le système tourne",
+    "pt": "Sistema em execução",
+    "it": "Sistema in esecuzione",
+    "pl": "System działa",
+    "tr": "Sistem çalışıyor",
+    "ru": "Система работает"
+  },
+  "beschreibung": {
+    "de": "Wie lange der Rechner eingeschaltet ist.",
+    "en": "How long the machine has been on.",
+    "es": "Cuánto tiempo lleva encendido el equipo.",
+    "fr": "Depuis combien de temps la machine est allumée.",
+    "pt": "Há quanto tempo o computador está ligado.",
+    "it": "Da quanto tempo è acceso il computer.",
+    "pl": "Jak długo komputer jest włączony.",
+    "tr": "Bilgisayarın ne kadar süredir açık olduğu.",
+    "ru": "Как долго компьютер включён."
+  },
+  "breite": 1
+}

@@ -1,0 +1,26 @@
+{
+  "id": "instanz-ram",
+  "titel": {
+    "de": "RAM fürs Spiel",
+    "en": "Game RAM",
+    "es": "RAM del juego",
+    "fr": "RAM du jeu",
+    "pt": "RAM do jogo",
+    "it": "RAM per il gioco",
+    "pl": "RAM dla gry",
+    "tr": "Oyun RAM'i",
+    "ru": "RAM для игры"
+  },
+  "beschreibung": {
+    "de": "Wie viel Arbeitsspeicher die Instanz verwenden darf.",
+    "en": "How much memory the instance may use.",
+    "es": "Cuánta memoria puede usar la instancia.",
+    "fr": "Combien de mémoire l’instance peut utiliser.",
+    "pt": "Quanta memória a instância pode usar.",
+    "it": "Quanta memoria può usare l'istanza.",
+    "pl": "Ile pamięci może użyć instancja.",
+    "tr": "Örneğin kullanabileceği bellek miktarı.",
+    "ru": "Сколько памяти может использовать инстанс."
+  },
+  "breite": 1
+}

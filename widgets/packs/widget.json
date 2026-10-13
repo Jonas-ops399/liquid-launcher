@@ -1,0 +1,26 @@
+{
+  "id": "packs",
+  "titel": {
+    "de": "Ressourcenpakete",
+    "en": "Resource packs",
+    "es": "Paquetes de recursos",
+    "fr": "Packs de ressources",
+    "pt": "Pacotes de recursos",
+    "it": "Pacchetti di risorse",
+    "pl": "Pakiety zasobów",
+    "tr": "Kaynak paketleri",
+    "ru": "Пакеты ресурсов"
+  },
+  "beschreibung": {
+    "de": "Wie viele Ressourcenpakete in der Instanz liegen.",
+    "en": "How many resource packs the instance contains.",
+    "es": "Cuántos paquetes de recursos hay en la instancia.",
+    "fr": "Combien de packs de ressources contient l’instance.",
+    "pt": "Quantos pacotes de recursos a instância contém.",
+    "it": "Quanti pacchetti di risorse contiene l'istanza.",
+    "pl": "Ile pakietów zasobów zawiera instancja.",
+    "tr": "Örnekte kaç kaynak paketi olduğu.",
+    "ru": "Сколько пакетов ресурсов содержит инстанс."
+  },
+  "breite": 1
+}

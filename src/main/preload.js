@@ -52,7 +52,20 @@ contextBridge.exposeInMainWorld('launcher', {
     remove: invoke('worlds:delete')
   },
   instances: {
+    // Modpacks. Die Liste kommt aus %APPDATA%/instances — es gibt keine
+    // festen Eintraege mehr im Code (siehe instances.js).
+    //
+    // `versions` liefert echte Versionen aus dem Mojang-Manifest fuer den
+    // Dialog "Neues Modpack". `remove` weigert sich, solange das Modpack
+    // laeuft — die Pruefung sitzt im Hauptprozess und laesst sich von hier
+    // aus nicht umgehen.
     list: invoke('instances:list'),
+    create: invoke('instances:create'),
+    rename: invoke('instances:rename'),
+    setTechnik: invoke('instances:setTechnik'),
+    duplicate: invoke('instances:duplicate'),
+    remove: invoke('instances:remove'),
+    versions: invoke('instances:versions'),
     launch: invoke('instances:launch'),
     stop: invoke('instances:stop'),
     onStatusChange: subscribe('instances:statusChange'),
@@ -65,6 +78,21 @@ contextBridge.exposeInMainWorld('launcher', {
     remove: invoke('mods:remove'),
     listInstalled: invoke('mods:listInstalled'),
     importLocal: invoke('mods:importLocal') // öffnet nativen Datei-Dialog, kopiert .jar in den App-Ordner
+  },
+  // Ressourcenpakete der gewaehlten Instanz.
+  //
+  // Anders als bei den Mods gibt es hier keine Suche und keinen Download:
+  // ein Paket ist eine Datei (oder ein Ordner) im resourcepacks/-Ordner, und
+  // der Schalter schreibt genau eine Zeile in options.txt.
+  //
+  // `list` liefert { packs, konflikte } — kein reines Array, weil ein Paket
+  // auch doppelt vorliegen kann (Foo.zip und Foo/) und das eine Meldung
+  // braucht, statt stillschweigend eines der beiden zu bevorzugen.
+  packs: {
+    list: invoke('packs:list'),
+    setActive: invoke('packs:setActive'),
+    remove: invoke('packs:remove'),
+    importLocal: invoke('packs:importLocal') // oeffnet den Dateidialog, kopiert .zip in resourcepacks/
   },
   servers: {
     list: invoke('servers:list'),
@@ -89,11 +117,30 @@ contextBridge.exposeInMainWorld('launcher', {
   skins: {
     getActive: invoke('skins:getActive'),
     upload: invoke('skins:upload'),
+    vergessen: invoke('skins:vergessen'),
     setActive: invoke('skins:setActive')
   },
   settings: {
     get: invoke('settings:get'),
     set: invoke('settings:set')
+  },
+  // Modpack-Import: .mrpack (Modrinth) und CurseForge-Zips.
+  //
+  // `pruefen` oeffnet den Dateidialog und liefert eine Zusammenfassung
+  // (format, name, version, minecraft, modloader, dateien, overrides) —
+  // `importieren` braucht danach nur noch den Instanznamen und importiert
+  // die GEWAEHLTE Datei. Der Renderer uebergibt bewusst keinen Pfad.
+  //
+  // `sucheModrinth` / `importiereModrinth` finden und laden das neueste
+  // .mrpack eines Projekts. `sucheCurseForge` antwortet ohne hinterlegten
+  // API-Schluessel immer mit { fehler: '...' } und ist deshalb kein
+  // vollwertiger Weg — die Datei-Importseite funktioniert ohne Schluessel.
+  modpackQuellen: {
+    pruefen: invoke('modpackQuellen:pruefen'),
+    importieren: invoke('modpackQuellen:importieren'),
+    sucheModrinth: invoke('modpackQuellen:sucheModrinth'),
+    importiereModrinth: invoke('modpackQuellen:importiereModrinth'),
+    sucheCurseForge: invoke('modpackQuellen:sucheCurseForge')
   },
   windowControl: {
     getBounds: invoke('window:getBounds'),
@@ -101,6 +148,15 @@ contextBridge.exposeInMainWorld('launcher', {
     setPosition: invoke('window:setPosition'),
     center: invoke('window:center'),
     resetSize: invoke('window:resetSize')
+  },
+  // Screenshot der Launcher-Oberflaeche (Schnellzugriff auf der Startseite).
+  // Der Hauptprozess zeichnet das Fenster und legt das PNG unter
+  // %APPDATA%/Liquid Launcher/screenshots/ ab. Der Renderer bekommt nur den
+  // Dateinamen zurueck - kein fs und keine Bilddaten, er kann die Datei also
+  // nicht selbst schreiben oder lesen.
+  screenshots: {
+    capture: invoke('screenshot:capture'),
+    openFolder: invoke('screenshot:openFolder')
   },
   // Widgets.
   //
@@ -115,6 +171,10 @@ contextBridge.exposeInMainWorld('launcher', {
     list: invoke('widgets:list'),            // verfuegbare Widgets
     html: invoke('widgets:html'),            // HTML eines Widgets
     daten: invoke('widgets:daten'),          // der gefilterte Datenkoffer
+    // Leichter Kanal fuer die oft messbaren Werte (CPU, RAM, Datentraeger,
+    // laufende Spiel-Prozesse). Der Host fragt ihn im Takt ab, siehe
+    // widget-host.js datenFrisch().
+    systemdaten: invoke('widgets:systemdaten'),
     openFolder: invoke('widgets:openFolder') // Ordner fuer eigene Widgets
   },
   // Eigene Schriftdatei fuer die Oberflaeche.

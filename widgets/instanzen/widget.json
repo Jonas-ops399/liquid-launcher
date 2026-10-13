@@ -1,0 +1,26 @@
+{
+  "id": "instanzen",
+  "titel": {
+    "de": "Instanzen",
+    "en": "Instances",
+    "es": "Instancias",
+    "fr": "Instances",
+    "pt": "Instâncias",
+    "it": "Istanze",
+    "pl": "Instancje",
+    "tr": "Örnekler",
+    "ru": "Инстансы"
+  },
+  "beschreibung": {
+    "de": "Wie viele Instanzen es gibt und welche aktiv ist.",
+    "en": "How many instances exist and which one is active.",
+    "es": "Cuántas instancias hay y cuál está activa.",
+    "fr": "Combien d’instances existent et laquelle est active.",
+    "pt": "Quantas instâncias existem e qual está ativa.",
+    "it": "Quante istanze esistono e quale è attiva.",
+    "pl": "Ile jest instancji i która jest aktywna.",
+    "tr": "Kaç örnek olduğu ve hangisinin etkin olduğu.",
+    "ru": "Сколько есть инстансов и какой активен."
+  },
+  "breite": 1
+}

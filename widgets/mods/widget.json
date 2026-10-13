@@ -1,6 +1,26 @@
 {
   "id": "mods",
-  "titel": "Mods",
-  "beschreibung": "Anzahl der installierten Mods der gewaehlten Instanz.",
+  "titel": {
+    "de": "Mods",
+    "en": "Mods",
+    "es": "Mods",
+    "fr": "Mods",
+    "pt": "Mods",
+    "it": "Mods",
+    "pl": "Mods",
+    "tr": "Mods",
+    "ru": "Mods"
+  },
+  "beschreibung": {
+    "de": "Anzahl der installierten Mods der gewählten Instanz.",
+    "en": "Number of installed mods in the selected instance.",
+    "es": "Número de mods instalados de la instancia seleccionada.",
+    "fr": "Nombre de mods installés de l’instance sélectionnée.",
+    "pt": "Número de mods instalados na instância selecionada.",
+    "it": "Numero di mods installati nell'istanza selezionata.",
+    "pl": "Liczba zainstalowanych modów w wybranej instancji.",
+    "tr": "Seçili örnekte kurulu mod sayısı.",
+    "ru": "Количество установленных модов в выбранном инстансе."
+  },
   "breite": 1
 }

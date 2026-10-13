@@ -73,7 +73,22 @@ const ERLAUBTE_DATENFELDER = [
   'modAnzahl',
   'server',
   'gestartetAm',
-  'sprache'
+  'sprache',
+  // ---- Phase D4: messbare System- und Instanzwerte ---------------------
+  // Alles hier drin ist GEMESSEN, nichts geschaetzt (siehe systemdaten.js).
+  // Bewusst als Bytes/Zahlen und OHNE Pfade: ein Pfad in einer Kachel waere
+  // ein Lesekanal, den es nicht geben muss.
+  'system',                  // os-Werte: RAM, Kerne, Takt, Uptime, Release
+  'cpuLast',                 // Auslastung in Prozent, null solange nicht messbar
+  'laufwerk',                // { gesamt, frei } des Datentraegers mit den Welten
+  'netzwerk',                // [{ name, intern, adresse }] - nur IPv4
+  'launcherVersion',         // package.json / app.getVersion()
+  'javaInfo',                // { majorErforderlich, erkannt, status }
+  'instanzGroesse',           // Bytes des Instanzordners
+  'modsGroesse',             // Bytes des mods-Ordners
+  'ressourcenpaketeAnzahl',  // Eintraege in resourcepacks/
+  'instanzRam',              // { minGb, maxGb } aus den Einstellungen
+  'prozesse'                // laufende Spiel-Prozesse, ohne cwd und mainClass
 ];
 
 /**
@@ -105,6 +120,29 @@ function liegtInnerhalb(wurzel, ziel) {
  * ein kaputtes Widget darf den Launcher nicht zum Absturz bringen, es soll
  * schlicht nicht erscheinen.
  */
+// Titel und Beschreibung duerfen entweder ein String sein (dann gilt er fuer
+// alle Sprachen) oder ein Objekt { de, en, es, fr }. So bleibt jedes bestehende
+// eigene Widget gueltig, waehrend eingebaute Widgets ihren Titel mit der
+// eingestellten Sprache wechseln.
+const SPRACHEN = ['de', 'en', 'es', 'fr', 'pt', 'it', 'pl', 'tr', 'ru'];
+
+function normalisiereText(feld, maxLaenge) {
+  if (typeof feld === 'string') {
+    const s = feld.trim();
+    return s ? { basis: s.slice(0, maxLaenge), i18n: {} } : null;
+  }
+  if (feld && typeof feld === 'object' && !Array.isArray(feld)) {
+    const i18n = {};
+    for (const sp of SPRACHEN) {
+      const v = feld[sp];
+      if (typeof v === 'string' && v.trim()) i18n[sp] = v.trim().slice(0, maxLaenge);
+    }
+    const basis = i18n.de || i18n.en || Object.values(i18n)[0];
+    return basis ? { basis, i18n } : null;
+  }
+  return null;
+}
+
 function pruefeManifest(roh) {
   if (!roh || typeof roh !== 'object' || Array.isArray(roh)) {
     return { ok: false, fehler: 'Manifest ist kein Objekt.' };
@@ -112,9 +150,11 @@ function pruefeManifest(roh) {
   if (!istGueltigeId(roh.id)) {
     return { ok: false, fehler: 'Ungueltige id (erlaubt: Buchstaben, Ziffern, -, _).' };
   }
-  if (typeof roh.titel !== 'string' || !roh.titel.trim()) {
+  const titel = normalisiereText(roh.titel, 80);
+  if (!titel) {
     return { ok: false, fehler: 'Feld "titel" fehlt oder ist leer.' };
   }
+  const beschreibung = normalisiereText(roh.beschreibung, 200) || { basis: '', i18n: {} };
   // breite: number of grid cells. Default 1, and only 1 or 2 are accepted.
   // Anything else is set to 1 instead of rejected - a widget that
   // specifies "wide" should not disappear completely.
@@ -126,9 +166,10 @@ function pruefeManifest(roh) {
     ok: true,
     manifest: {
       id: roh.id,
-      titel: String(roh.titel).trim().slice(0, 80),
-      beschreibung: typeof roh.beschreibung === 'string'
-        ? roh.beschreibung.slice(0, 200) : '',
+      titel: titel.basis,
+      titelI18n: titel.i18n,
+      beschreibung: beschreibung.basis,
+      beschreibungI18n: beschreibung.i18n,
       breite,
       // Der Pfad zur HTML-Datei ist optional. Fehlt er, wird widget.html
       // genommen. So reicht bei den meisten Widgets nur das Manifest.
@@ -172,7 +213,8 @@ function liesManifest(ordner) {
  * Unsichtbar/unsortierbare Ordner werden uebersprungen, statt zu fehlschlagen:
  * ein kaputtes Widget darf den Rest nicht mitreiessen.
  */
-function listeWidgets(wurzeln) {
+function listeWidgets(wurzeln, sprache) {
+  const gewaehlt = typeof sprache === 'string' && sprache ? sprache.slice(0, 8) : 'de';
   const gefunden = new Map();
   for (const wurzel of wurzeln) {
     if (!wurzel || typeof wurzel.ordner !== 'string') continue;
@@ -192,8 +234,11 @@ function listeWidgets(wurzeln) {
       if (!liegtInnerhalb(wurzel.ordner, ordner)) continue; // paranoia
       gefunden.set(m.id, {
         id: m.id,
-        titel: m.titel,
-        beschreibung: m.beschreibung,
+        // Titel und Beschreibung in der eingestellten Sprache. Fehlt die
+        // Uebersetzung, bleibt der deutsche Basiswert stehen - eine leere
+        // Kachel waere schlechter als eine deutsche.
+        titel: (m.titelI18n && m.titelI18n[sprache]) || m.titel,
+        beschreibung: (m.beschreibungI18n && m.beschreibungI18n[sprache]) || m.beschreibung,
         breite: m.breite,
         quelle: wurzel.quelle || QUELLE_EINGEBAUT,
         ordnerName: eintrag.name

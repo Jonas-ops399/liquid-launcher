@@ -1,0 +1,26 @@
+{
+  "id": "netzwerk",
+  "titel": {
+    "de": "Netzwerk",
+    "en": "Network",
+    "es": "Red",
+    "fr": "Réseau",
+    "pt": "Rede",
+    "it": "Rete",
+    "pl": "Sieć",
+    "tr": "Ağ",
+    "ru": "Сеть"
+  },
+  "beschreibung": {
+    "de": "Externe Netzwerk-Schnittstellen und ihre Namen.",
+    "en": "External network interfaces and their names.",
+    "es": "Interfaces de red externas y sus nombres.",
+    "fr": "Interfaces réseau externes et leurs noms.",
+    "pt": "Interfaces de rede externas e os seus nomes.",
+    "it": "Interfacce di rete esterne e i loro nomi.",
+    "pl": "Zewnętrzne interfejsy sieciowe i ich nazwy.",
+    "tr": "Harici ağ arayüzleri ve adları.",
+    "ru": "Внешние сетевые интерфейсы и их имена."
+  },
+  "breite": 1
+}

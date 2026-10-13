@@ -1,0 +1,26 @@
+{
+  "id": "cpu-info",
+  "titel": {
+    "de": "CPU",
+    "en": "CPU",
+    "es": "CPU",
+    "fr": "CPU",
+    "pt": "CPU",
+    "it": "CPU",
+    "pl": "CPU",
+    "tr": "CPU",
+    "ru": "CPU"
+  },
+  "beschreibung": {
+    "de": "Kernanzahl und von der Hardware gemeldeter Takt.",
+    "en": "Core count and clock reported by the hardware.",
+    "es": "Número de núcleos y frecuencia indicada por el hardware.",
+    "fr": "Nombre de cœurs et fréquence annoncée par le matériel.",
+    "pt": "Número de núcleos e frequência reportada pelo hardware.",
+    "it": "Numero di core e frequenza riportata dall'hardware.",
+    "pl": "Liczba rdzeni i częstotliwość zgłaszana przez sprzęt.",
+    "tr": "Çekirdek sayısı ve donanımın bildirdiği saat hızı.",
+    "ru": "Количество ядер и частота, сообщаемая оборудованием."
+  },
+  "breite": 1
+}

@@ -1,0 +1,26 @@
+{
+  "id": "letzter-start",
+  "titel": {
+    "de": "Zuletzt gespielt",
+    "en": "Last played",
+    "es": "Última partida",
+    "fr": "Dernière partie",
+    "pt": "Jogado pela última vez",
+    "it": "Giocato l'ultima volta",
+    "pl": "Ostatnio grane",
+    "tr": "Son oynanan",
+    "ru": "Последняя игра"
+  },
+  "beschreibung": {
+    "de": "Wie lange her, dass irgendwo gespielt wurde.",
+    "en": "How long ago the game was played.",
+    "es": "Cuánto tiempo hace que se jugó.",
+    "fr": "Il y a combien de temps que l’on a joué.",
+    "pt": "Há quanto tempo se jogou pela última vez.",
+    "it": "Da quanto tempo non si gioca.",
+    "pl": "Jak dawno temu grano.",
+    "tr": "En son ne zaman oynandığı.",
+    "ru": "Как давно играли в последний раз."
+  },
+  "breite": 1
+}

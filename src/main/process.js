@@ -243,6 +243,29 @@ function launchProcess(launchOptions) {
   let lastLogLines = [];
   const MAX_LOG_LINES = 50;
 
+  // Der Eintrag fuer activeProcesses. Er wird VOR den Ereignisbehandlern
+  // angelegt, weil die Behandler ueber die Variable darauf zugreifen. Ein
+  // blosses `activeProcesses.get(instanceId)` waere nicht dasselbe: sobald
+  // jemand stoppt, loescht der Aufrufer den Eintrag, und genau dann, wenn
+  // die close-Behandlung gebraucht wird, ist er schon weg. Die Reihenfolge
+  // der close-Handler zu bemuehen waere noch schlechter — sie haengt
+  // davon ab, in welcher Reihenfolge sich jemand mal registriert hat.
+  const eintrag = {
+    process: childProcess,
+    emitter,
+    launchOptions: sanitizedOptions,
+    startTime: Date.now(),
+    // Wurde von aussen "beendet" verlangt? Dann ist der Exit-Code kein
+    // Absturz, sondern die Antwort auf unsere eigene Anfrage. Ohne dieses
+    // Merkmal meldet JEDES regulaere Beenden einen Absturz: Minecraft beendet
+    // sich nicht mit 0, wenn man ihm ein Abschicktsignal gibt, also landet
+    // jeder normale Feierabend unten im Zweig "abgestuerzt" — und die
+    // Oberflaeche schreibt dann "Minecraft ist abgestuerzt" und darunter die
+    // letzten 15 Log-Zeilen als Fehler, unter anderem, dass das Spiel noch
+    // lief. Siehe die close-Behandlung weiter unten.
+    stopRequested: false
+  };
+
   // Track stdout
   let stdoutBuffer = '';
   childProcess.stdout.on('data', (data) => {
@@ -343,16 +366,33 @@ function launchProcess(launchOptions) {
       emitter.emit('log', { line: sanitizedLine, level, timestamp: new Date().toISOString(), instanceId });
     }
 
-    if (exitCode === 0) {
+    // Ein von aussen verlangtes Beenden ist kein Absturz, gleichgueltig welchen
+    // Exit-Code das Betriebssystem gerade fuer die Abschickung zurueckgibt.
+    // Beide Zweige melden deshalb 'closed'; der Exit-Code wandert als Hinweis
+    // mit, damit man ihn im Protokoll nachschlagen kann.
+    //
+    // Wichtig ist, dass hier NICHT allein der Exit-Code entscheidet. Wer das
+    // Spiel ueber "Beenden" schliesst, bekommt unter Windows praktisch nie
+    // die 0 zurueck — und sieht deshalb nach jedem normalen Feierabend ein
+    // Absturzwindow, das die letzten Log-Zeilen als Fehlerliste ausgibt. In
+    // diesem Protokoll steht dann unter anderem, dass das Spiel gerade
+    // sauber lief: ein Absturz, den man selbst veranlasst hat.
+    const gewollt = eintrag.stopRequested;
+
+    if (exitCode === 0 || gewollt) {
       emitter.emit('closed', {
         instanceId,
         exitCode,
+        // Ausdruecklich mitgeben, damit der Aufrufer unterscheiden kann, ob
+        // das Spiel sich selbst beendet hat oder abgeraeumt wurde.
+        gewollt,
         timestamp: new Date().toISOString()
       });
     } else {
       emitter.emit('crashed', {
         instanceId,
         exitCode,
+        gewollt: false,
         lastLogLines: lastLogLines.map(l => l.line),
         timestamp: new Date().toISOString()
       });
@@ -381,12 +421,7 @@ function launchProcess(launchOptions) {
   emitter.instanceId = instanceId;
 
   // Store process reference
-  activeProcesses.set(instanceId, {
-    process: childProcess,
-    emitter,
-    launchOptions: sanitizedOptions,
-    startTime: Date.now()
-  });
+  activeProcesses.set(instanceId, eintrag);
 
   return emitter;
 }
@@ -407,6 +442,11 @@ function stopProcess(instanceId, timeoutMs = 10000) {
 
   const { process: childProcess, emitter } = instance;
 
+  // VOR dem ersten Signal an den Prozess. Das close-Ereignis kann in
+  // derselben Tick-Runde kommen, in der hier gesendet wird; ein Merkmal,
+  // das erst danach gesetzt wuerde, käme zu spät.
+  instance.stopRequested = true;
+
   console.log(`[Process] Stopping instance ${instanceId}...`);
 
   return new Promise((resolve) => {
@@ -421,18 +461,30 @@ function stopProcess(instanceId, timeoutMs = 10000) {
       }
     };
 
-    // Try graceful shutdown first (SIGTERM equivalent on Windows)
-    if (process.platform === 'win32') {
-      // On Windows, use taskkill /T to kill process tree
-      try {
-        // First try Ctrl-Break equivalent for graceful shutdown
-        // Send CTRL_BREAK_EVENT to the process group
-        process.kill(-childProcess.pid, 'SIGTERM');
-      } catch (e) {
-        // Process might already be dead
-      }
-    } else {
+    // Der erste Versuch: dem Kind Prozess direkt ein SIGTERM geben. Das ist auf
+    // BEIDEN Plattformen derselbe Aufruf — und es ist der einzige, der
+    // tatsaechlich etwas bewirkt.
+    //
+    // Vorher stand hier unter Windows `process.kill(-pid, 'SIGTERM')` und der
+    // funktionierende Aufruf im `else`, also ausserhalb von Windows. Das ist
+    // auf Windows nie gelaufen: Windows kennt keine Prozessgruppen, die
+    // negative PID findet dort nichts, und der Wurf (ESRCH) wurde
+    // weggeschluckt. Gemessen: `process.kill(-pid)` wirft ESRCH, mit und ohne
+    // `detached: true`. Es bliebe also gar kein erster Versuch uebrig — der
+    // Aufruf wartete den ganzen Timeout ab und riss dann per `taskkill /F`
+    // den Prozessbaum weg. Jedes "Beenden" kostete die vollen 10 Sekunden.
+    //
+    // Was "sanft" auf Windows bedeutet: gar nichts. SIGTERM kennt Windows
+    // nicht, Node setzt dort ein TerminateProcess. Das Spiel speichert also
+    // auch beim ersten Versuch nicht — es gibt schlicht keine Gelegenheit
+    // dafür. Der Unterschied ist der: der erste Versuch beendet genau die JVM,
+    // ohne auf die Sekunde zu warten, und `taskkill /T /F` bleibt als
+    // Notloesung fuer die Kindprozesse stehen, die Windows sonst zurücklässt.
+    try {
       childProcess.kill('SIGTERM');
+    } catch (e) {
+      // Prozess koennte schon weg sein. Dann ist nichts zu tun — der
+      // close-Handler meldet es ohnehin gleich.
     }
 
     // Set timeout for force kill

@@ -38,6 +38,10 @@ function legeAn(ordner, id, manifest, html) {
 legeAn(EINGEBAUT, 'uhr', { id: 'uhr', titel: 'Uhr', breite: 1 }, '<div id="z"></div>');
 legeAn(EINGEBAUT, 'welten', { id: 'welten', titel: 'Welten', breite: 1 }, '<div>w</div>');
 legeAn(BENUTZER, 'meine-uhr', { id: 'meine-uhr', titel: 'Meine Uhr', breite: 2 }, '<p>hi</p>');
+// Titel und Beschreibung als Sprachobjekt (mehrsprachige Widgets).
+legeAn(EINGEBAUT, 'sprachig',
+  { id: 'sprachig', titel: { de: 'Sprachig', en: 'Multilingual' }, beschreibung: { de: 'Deutsch', en: 'English' } },
+  '<div>s</div>');
 // Kaputt: kein Manifest
 fs.mkdirSync(path.join(BENUTZER, 'kaputt-ohne-manifest'), { recursive: true });
 // Kaputt: Manifest ohne gueltige ID
@@ -154,6 +158,16 @@ ok(W.pruefeManifest('text').ok === false, 'String abgewiesen');
   ok(m.html === 'hosts', 'HTML-Pfad im Manifest wird auf den Dateinamen reduziert',
      JSON.stringify(m.html));
 }
+{
+  // Titel und Beschreibung duerfen ein Sprachobjekt sein (mehrsprachige
+  // Widgets). Fehlt jede Sprache, ist das Manifest ungueltig.
+  ok(W.pruefeManifest({ id: 'w', titel: { de: 'Welten', en: 'Worlds' } }).ok === true,
+     'Titel als Sprachobjekt ist gueltig');
+  ok(W.pruefeManifest({ id: 'w', titel: {} }).ok === false,
+     'leeres Sprachobjekt abgewiesen');
+  ok(W.pruefeManifest({ id: 'w', titel: { de: '   ', en: '' } }).ok === false,
+     'nur leere Sprachtexte abgewiesen');
+}
 
 // =====================================================================
 group('4. Auflisten');
@@ -171,6 +185,19 @@ ok(alle.every(w => w.titel.length > 0), 'jedes gelistete Widget hat einen Titel'
 {
   const ohneQuelle = W.listeWidgets([{ ordner: EINGEBAUT }]);
   ok(ohneQuelle.every(w => w.quelle === 'eingebaut'), 'Quelle faellt auf "eingebaut" zurueck');
+}
+{
+  // Sprache wird beim Auflisten aufgeloest: eingebaute Widgets tragen ihren
+  // Titel in vier Sprachen, eigene bleiben beim einfachen String.
+  const de = W.listeWidgets(WURZELN, 'de').find(w => w.id === 'sprachig');
+  const en = W.listeWidgets(WURZELN, 'en').find(w => w.id === 'sprachig');
+  ok(de && de.titel === 'Sprachig' && de.beschreibung === 'Deutsch',
+     'deutsches Sprachobjekt wird aufgeloest', de ? de.titel : '(keins)');
+  ok(en && en.titel === 'Multilingual' && en.beschreibung === 'English',
+     'englisches Sprachobjekt wird aufgeloest', en ? en.titel : '(keins)');
+  const unbekannt = W.listeWidgets(WURZELN, 'xx').find(w => w.id === 'sprachig');
+  ok(unbekannt && unbekannt.titel === 'Sprachig',
+     'unbekannte Sprache faellt auf Deutsch zurueck', unbekannt ? unbekannt.titel : '(keins)');
 }
 {
   // Eine Wurzel, die es nicht gibt, darf nichts werfen - das ist der Fall
@@ -271,14 +298,60 @@ group('7. Positivliste: was ein Widget sehen darf');
   ok(raus.gestartetAm !== undefined, 'gestartetAm kommt an');
   ok(raus.sprache === 'de', 'sprache kommt an');
 
+  // D4: die gemessenen Systemwerte gehen ebenfalls durch - und zwar ohne
+  // dass ihr Inhalt hier erdacht werden muss. Der Koffer oben enthaelt sie
+  // nicht, deshalb kommt nur die Tatsache "das Feld existiert" an.
   {
-    // Gegenprobe zur Liste selbst: sie enthaelt genau die sieben Felder und
+    const kofferD4 = {
+      system: { kerne: 8, ramGesamt: 16 * 1024 ** 3 },
+      cpuLast: null,              // solange nicht messbar - kein erfundener Wert
+      laufwerk: { gesamt: 100, frei: 40 },
+      netzwerk: [{ name: 'WLAN', intern: false, adresse: '192.168.178.5' }],
+      launcherVersion: '1.4.0',
+      javaInfo: { majorErforderlich: 21, erkannt: null, status: 'suchend' },
+      instanzGroesse: 1234, modsGroesse: 56, ressourcenpaketeAnzahl: 3,
+      instanzRam: { minGb: 2, maxGb: 6 },
+      prozesse: [{ name: 'javaw', pid: 4711 }],
+      // Nicht auf der Liste - und trotzdem im selben Koffer:
+      userData: 'C:\\Users\\Anwender\\AppData\\Roaming\\Liquid Launcher'
+    };
+    const d4 = W.filtereDatenFuerWidget(kofferD4);
+    ok(JSON.stringify(d4.system) === JSON.stringify(kofferD4.system), 'system kommt unveraendert an');
+    ok(d4.cpuLast === null, 'cpuLast: null bleibt null (kein erfundener Wert)');
+    ok(d4.laufwerk && d4.laufwerk.frei === 40, 'laufwerk kommt an');
+    ok(Array.isArray(d4.netzwerk), 'netzwerk kommt an');
+    ok(d4.launcherVersion === '1.4.0', 'launcherVersion kommt an');
+    ok(d4.javaInfo.status === 'suchend', 'javaInfo kommt an');
+    ok(d4.instanzGroesse === 1234 && d4.modsGroesse === 56, 'die Ordnergroessen kommen an');
+    ok(d4.ressourcenpaketeAnzahl === 3, 'die Paket-Anzahl kommt an');
+    ok(d4.instanzRam.maxGb === 6, 'instanzRam kommt an');
+    ok(Array.isArray(d4.prozesse) && d4.prozesse[0].pid === 4711, 'prozesse kommen an');
+    ok(d4.userData === undefined, 'der userData-Pfad wird NICHT durchgereicht');
+    ok(JSON.stringify(d4).indexOf('AppData') === -1, 'und steht nicht im Ergebnis');
+  }
+
+  {
+    // Gegenprobe zur Liste selbst: sie enthaelt genau diese Felder und
     // sonst nichts. Eine Liste, die still waechst, faellt hier auf.
+    // Phase D4 hat die Liste von sieben auf achtzehn Felder erweitert -
+    // jeder Eintrag darin ist eine gemessene Groesse aus systemdaten.js,
+    // keiner davon traegt einen Pfad oder ein Token.
     const erlaubt = W.ERLAUBTE_DATENFELDER.slice().sort();
     ok(JSON.stringify(erlaubt) ===
-       JSON.stringify(['aktiveInstanz','gestartetAm','instanzen','modAnzahl','server','sprache','welten']),
-       'die Positivliste enthaelt genau die sieben erwarteten Felder',
+       JSON.stringify([
+         'aktiveInstanz','cpuLast','gestartetAm','instanzGroesse','instanzRam',
+         'instanzen','javaInfo','laufwerk','launcherVersion','modAnzahl',
+         'modsGroesse','netzwerk','prozesse','ressourcenpaketeAnzahl',
+         'server','sprache','system','welten'
+       ]),
+       'die Positivliste enthaelt genau die achtzehn erwarteten Felder',
        JSON.stringify(erlaubt));
+    // Die D4-Felder duerfen nichts Persoenliches tragen: kein Pfad, keinen
+    // Benutzernamen. Geprueft wird an der Liste selbst, nicht an einem
+    // Einzelwert - denn ein neues Feld waere sonst ungeprueft.
+    const pfadVerdaechtig = /pfad|token|account|datenverzeichnis|benutzer/i;
+    const roh = erlaubt.filter((f) => pfadVerdaechtig.test(f));
+    ok(roh.length === 0, 'kein Feldname deutet auf Pfad oder Token hin', roh.join(', '));
   }
 
   // Gegenprobe: der ganze Koffer als JSON darf kein Token enthalten

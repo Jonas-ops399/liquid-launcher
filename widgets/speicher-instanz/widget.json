@@ -1,0 +1,26 @@
+{
+  "id": "speicher-instanz",
+  "titel": {
+    "de": "Instanzordner",
+    "en": "Instance folder",
+    "es": "Carpeta de la instancia",
+    "fr": "Dossier de l’instance",
+    "pt": "Pasta da instância",
+    "it": "Cartella dell'istanza",
+    "pl": "Folder instancji",
+    "tr": "Örnek klasörü",
+    "ru": "Папка инстанса"
+  },
+  "beschreibung": {
+    "de": "Wie gross der Ordner der aktiven Instanz ist.",
+    "en": "How big the active instance folder is.",
+    "es": "Cuánto pesa la carpeta de la instancia activa.",
+    "fr": "La taille du dossier de l’instance active.",
+    "pt": "O tamanho da pasta da instância ativa.",
+    "it": "Quanto è grande la cartella dell'istanza attiva.",
+    "pl": "Jak duży jest folder aktywnej instancji.",
+    "tr": "Etkin örnek klasörünün boyutu.",
+    "ru": "Размер папки активного инстанса."
+  },
+  "breite": 1
+}

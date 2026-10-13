@@ -10,6 +10,7 @@ const crypto = require('node:crypto');
 const https = require('https');
 const AdmZip = require('adm-zip');
 const { app } = require('electron');
+const fabricLoader = require('./fabricLoader');
 
 // ==================== KONFIGURATION ====================
 
@@ -781,7 +782,7 @@ function buildGameArgs(versionJson, account, gameDir, resolution, assetIndexId, 
 /**
  * HAUPT-FUNKTION: Alles für eine Version sicherstellen
  */
-async function ensureVersionFiles(versionId, webContents = null) {
+async function ensureVersionFiles(versionId, webContents = null, loader = null) {
   const log = (line, level = 'info') => {
     if (webContents) {
       webContents.send('downloader:progress', { phase: 'log', line, level });
@@ -792,7 +793,26 @@ async function ensureVersionFiles(versionId, webContents = null) {
   const manifest = await getVersionManifest();
 
   log(`Lade ${versionId}.json…`);
-  const versionJson = await getVersionJson(versionId);
+  let versionJson = await getVersionJson(versionId);
+
+  // ---------- Modloader ergaenzen ----------
+  // `loader` ist null (Vanilla) oder { art: 'fabric', version: '0.19.5' }.
+  // Aus der Vanilla-version.json und dem Loader-Profil wird EINE version.json
+  // gebaut - die Startkette unten (Libraries, client.jar, Assets, Classpath,
+  // Argumente) laeuft danach unveraendert weiter, nur mit Fabric-Inhalt.
+  if (loader && loader.art && loader.art !== 'vanilla') {
+    if (loader.art !== 'fabric') {
+      throw new Error(`Der Modloader "${loader.art}" wird nicht unterstuetzt.`);
+    }
+    if (!loader.version) {
+      throw new Error('Fabric-Loader ohne Version - die Loader-Version fehlt.');
+    }
+    log(`Lade Fabric-Profile ${loader.version}…`);
+    const profil = await fabricLoader.holeProfil(versionId, loader.version);
+    versionJson = fabricLoader.verschmelze(versionJson, profil);
+    log(`Fabric Loader ${loader.version} bereit: ` +
+      `${versionJson.libraries.length} Libraries, MainClass ${versionJson.mainClass}.`);
+  }
 
   log(`Prüfe/Downloade Libraries…`);
   const libResult = await downloadLibraries(versionJson, versionId, (p) => {

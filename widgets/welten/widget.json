@@ -1,6 +1,26 @@
 {
   "id": "welten",
-  "titel": "Welten",
-  "beschreibung": "Anzahl der gespeicherten Welten der gewaehlten Instanz.",
+  "titel": {
+    "de": "Welten",
+    "en": "Worlds",
+    "es": "Mundos",
+    "fr": "Mondes",
+    "pt": "Mundos",
+    "it": "Mondi",
+    "pl": "Światy",
+    "tr": "Dünyalar",
+    "ru": "Миры"
+  },
+  "beschreibung": {
+    "de": "Anzahl der gespeicherten Welten der gewählten Instanz.",
+    "en": "Number of saved worlds in the selected instance.",
+    "es": "Número de mundos guardados de la instancia seleccionada.",
+    "fr": "Nombre de mondes enregistrés de l’instance sélectionnée.",
+    "pt": "Número de mundos guardados na instância selecionada.",
+    "it": "Numero di mondi salvati nell'istanza selezionata.",
+    "pl": "Liczba zapisanych światów w wybranej instancji.",
+    "tr": "Seçili örnekte kayıtlı dünya sayısı.",
+    "ru": "Количество сохранённых миров в выбранном инстансе."
+  },
   "breite": 1
 }

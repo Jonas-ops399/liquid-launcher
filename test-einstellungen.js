@@ -108,7 +108,7 @@ group('2. Die neuen Klassen haben eine CSS-Regel');
     ['.settings-scroll', 'overflow-y:auto', 'der scrollbare Bereich'],
     ['.settings-kopf', 'position:sticky', 'klebende Kopfzeile'],
     ['.settings-suche', 'display:flex', 'Suchfeld'],
-    ['.settings-raster', 'display:grid', 'zweispaltiges Kartenraster'],
+    ['.settings-raster', 'display:grid', 'einspaltiges Kartenraster (genau eine Spalte, Wunsch 06.10.)'],
     ['.settings-karte', 'border-radius', 'Karte'],
     ['.settings-karte.breit', 'grid-column', 'Login-Karte ueber beide Spalten'],
     ['.settings-feld', 'display:flex', 'eine Zeile in einer Karte'],
@@ -119,7 +119,7 @@ group('2. Die neuen Klassen haben eine CSS-Regel');
     ['.settings-zuruecksetzen', 'cursor:pointer', 'Zuruecksetzen-Knopf'],
     ['.settings-leer', 'display:none', 'Hinweis bei leerer Suche'],
     ['.shortcut-card', 'display:flex', 'Schnellzugriff-Karte'],
-    ['.shortcut-raster', 'display:grid', 'Raster der vier Sprungziele'],
+    ['.shortcut-raster', 'display:grid', 'Raster der Schnellzugriff-Kacheln'],
     ['.shortcut-kachel', 'cursor:pointer', 'einzelne Sprungziel-Kachel'],
     ['.ll-wenig-bewegung', 'transition:none', 'Klasse des Schalters'],
   ];
@@ -180,13 +180,15 @@ group('4. Hover auf der Startseite');
   ok(n2 >= 2, 'Stufe 2 (Karten) fragt bewegungAus()', n2 + ' Aufrufe');
 
   const hoverSel = (script.match(/const HOVER_SELECTOR = '([^']+)'/) || [])[1] || '';
-  for (const s of ['.hero', '.profile-card', '.stat-tile', '.world-card', '.srv-row']) {
+  for (const s of ['.stat-tile', '.world-card', '.srv-row']) {
     ok(new RegExp('(^|,\\s*)' + s.replace('.', '\\.') + '(\\s*,|$)').test(hoverSel),
        'HOVER_SELECTOR enthaelt ' + s, hoverSel);
   }
-  for (const s of ['.stat-card', '.shortcut-card']) {
+  // Die grossen Karten sollen sich NICHT bewegen (Wunsch 06.10.):
+  // Hero und Profilkarte stehen nicht mehr in der Liste.
+  for (const s of ['.hero', '.profile-card', '.stat-card', '.shortcut-card']) {
     ok(!new RegExp('(^|,\\s*)' + s.replace('.', '\\.') + '(\\s*,|$)').test(hoverSel),
-       'HOVER_SELECTOR enthaelt ' + s + ' NICHT (traegt bewegliche Teile)');
+       'HOVER_SELECTOR enthaelt ' + s + ' NICHT (gross oder traegt bewegliche Teile)');
   }
   // Kein translate() im CSS fuer Hero/Profil: die Bewegung kommt aus dem
   // Skript. Zwei Stellen, die dieselbe transform-Eigenschaft umkaempfen,
@@ -206,10 +208,14 @@ group('5. Schnellzugriff statt Neuigkeiten');
      'Keine .news-*-Klassen mehr im File',
      (src.match(/\bnews-[a-z]+\b/g) || []).join(', '));
   const kacheln = [...src.matchAll(/class="shortcut-kachel[^"]*"[^>]*data-view="([^"]+)"/g)].map(m => m[1]);
-  ok(kacheln.length === 4, 'Genau vier Sprungziele in der Karte', kacheln.join(', '));
-  for (const v of ['worlds', 'mods', 'servers', 'settings']) {
+  ok(kacheln.length === 6, 'Genau sechs Ansichten als Sprungziel', kacheln.join(', '));
+  for (const v of ['worlds', 'mods', 'resourcepacks', 'servers', 'account', 'settings']) {
     ok(kacheln.includes(v), 'Sprungziel ' + v + ' vorhanden');
   }
+  // Zwei Aktionen ohne Ansichtswechsel: Design-Panel und Screenshot.
+  const aktionen = [...src.matchAll(/class="shortcut-kachel[^"]*"[^>]*data-action="([^"]+)"/g)].map(m => m[1]);
+  ok(aktionen.length === 2 && aktionen.includes('theme') && aktionen.includes('screenshot'),
+     'die zwei Aktions-Kacheln (Design, Screenshot) sind da', aktionen.join(', '));
   // Die Kachel raeumt nicht nur die Ansicht, sie setzt auch den aktiven
   // Seitenleisten-Knopf - sonst leuchtet unten links eine Ansicht als
   // aktiv, die gar nicht offen ist.
@@ -225,9 +231,10 @@ group('5. Schnellzugriff statt Neuigkeiten');
 group('6. Das gespeicherte Karten-Layout wird mitgenommen');
 {
   ok(/function layoutUebernehmen\(/.test(script), 'layoutUebernehmen() gibt es');
-  ok(/gespeichert\.news && !gespeichert\.shortcut/.test(script),
+  ok(/gespeichert\.news\s*;/.test(script) && /!gespeichert\.shortcut/.test(script) &&
+     /typeof news === 'object'/.test(script),
      'Migration: ein altes news-Feld wird zu shortcut');
-  ok(/ziel\.shortcut\s*=\s*\{\s*\.\.\.ziel\.shortcut,\s*\.\.\.gespeichert\.news\s*\}/.test(script),
+  ok(/bloecke\.shortcut\s*=\s*\{\s*\.\.\.ziel\.shortcut,\s*\.\.\.news\s*\}/.test(script),
      'Migration: die alten Werte werden uebernommen, nicht die neuen verworfen');
   // Und sie muss auch laufen - eine nicht aufgerufene Migrationsfunktion
   // waere ein toter Zweig, der beim Lesen sehr plausibel aussieht.
@@ -341,12 +348,12 @@ group('9. Widgets bekommen Schrift und Groesse durchgereicht');
   ok(/--fs/.test(host) && /--ll-fs/.test(host), 'widget-host.js reicht --fs als --ll-fs weiter');
   ok(/--ll-fs'\s*:\s*'1'/.test(host), 'Widgets bekommen auch dann einen Wert, wenn nichts gesetzt ist');
 
-  // Vier mitgelieferte Widgets, alle vier muessen die Variablen benutzen -
-  // sonst staende die Uhr in Times New Roman, waehrend der Rest in der
-  // eingestellten Schrift steht.
+  // 24 mitgelieferte Widgets (4 alte + 20 aus Phase D4), alle muessen die
+  // Variablen benutzen - sonst stunde die Uhr in Times New Roman, waehrend
+  // der Rest in der eingestellten Schrift steht.
   const ordner = path.join(WURZEL, 'widgets');
   const namen = fs.existsSync(ordner) ? fs.readdirSync(ordner) : [];
-  ok(namen.length === 4, 'Vier mitgelieferte Widgets', namen.join(', '));
+  ok(namen.length === 24, '24 mitgelieferte Widgets', namen.join(', '));
   for (const n of namen) {
     const w = fs.readFileSync(path.join(ordner, n, 'widget.html'), 'utf8');
     ok(/var\(--ll-font/.test(w), n + ': benutzt --ll-font');
@@ -406,10 +413,12 @@ group('10. Was gespeichert wird');
 }
 
 // =====================================================================
-// 11. Die vier Sprachen sind vollstaendig
+// 11. Alle Sprachen sind vollstaendig
 // =====================================================================
-group('11. Alle vier Sprachen haben dieselben Schluessel');
+group('11. Alle Sprachen haben dieselben Schluessel');
 {
+  // E2 hat fuenf Sprachen ergaenzt: pt, it, pl, tr, ru.
+  const SPRACHEN = ['de', 'en', 'es', 'fr', 'pt', 'it', 'pl', 'tr', 'ru'];
   const a = script.indexOf('const TRANSLATIONS = {');
   const b = script.indexOf('\n  };', a);
   ok(a > 0 && b > a, 'TRANSLATIONS gefunden',
@@ -422,11 +431,17 @@ group('11. Alle vier Sprachen haben dieselben Schluessel');
     vm.createContext(ctx);
     vm.runInContext(script.slice(a, b + 4) + '\n;__ergebnis = TRANSLATIONS;', ctx);
     const tab = ctx.__ergebnis;
-    ok(!!tab && Object.keys(tab).length === 4, 'TRANSLATIONS liess sich auswerten',
-       tab ? Object.keys(tab).join(', ') : 'null');
 
-  const sprachen = Object.keys(tab);
-  ok(sprachen.length === 4, 'Vier Sprachen', sprachen.join(', '));
+  const sprachen = tab ? Object.keys(tab) : [];
+  const fehlendeSprachen = SPRACHEN.filter(s => !sprachen.includes(s));
+  const unbekannteSprachen = sprachen.filter(s => !SPRACHEN.includes(s));
+  ok(!!tab && sprachen.length === SPRACHEN.length &&
+     fehlendeSprachen.length === 0 && unbekannteSprachen.length === 0,
+     'TRANSLATIONS liess sich auswerten',
+     'erwartet ' + SPRACHEN.join(', ') + ' — gefunden ' + sprachen.join(', ') +
+     (fehlendeSprachen.length ? ' — fehlt ' + fehlendeSprachen.join(', ') : '') +
+     (unbekannteSprachen.length ? ' — zusaetzlich ' + unbekannteSprachen.join(', ') : ''));
+  ok(sprachen.length === SPRACHEN.length, 'Neun Sprachen', sprachen.join(', '));
   const voll = new Set(Object.keys(tab[sprachen[0]]));
   for (const sp of sprachen) {
     const keys = new Set(Object.keys(tab[sp]));
@@ -439,7 +454,7 @@ group('11. Alle vier Sprachen haben dieselben Schluessel');
     }
   }
   const neu = [
-    'shortcut_title', 'card_display_title', 'card_window_title',
+    'shortcut_title', 'card_display_title',
     'settings_subtitle', 'settings_search_ph', 'settings_search_empty',
     'settings_font_title', 'settings_fontsize_title',
     'settings_ownfont_title', 'settings_ownfont_load', 'settings_ownfont_clear',

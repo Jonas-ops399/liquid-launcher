@@ -10,6 +10,10 @@
 <meta charset="utf-8">
 <style>
   html, body { margin:0; padding:0; height:100%; background:transparent; overflow:hidden; }
+  /* Scrollleisten werden nirgends im Launcher gebraucht, also auch hier
+     keine. Siehe WIDGETS.md, Schritt 4 - der Host kann das nicht erzwingen. */
+  *{ scrollbar-width:none; }
+  *::-webkit-scrollbar{ width:0px; height:0px; }
   body { display:flex; align-items:center; justify-content:center; font-family:var(--ll-font, inherit);
          -webkit-user-select:none; user-select:none; }
   .mitte { text-align:center; }
@@ -27,6 +31,9 @@
   var mitte = document.getElementById('mitte');
   var gestartetAm = null;
   var tick = null;
+  var T = {};
+
+  function tx(k, f) { return (T && typeof T[k] === 'string' && T[k]) ? T[k] : f; }
 
   function melde(typ, felder) {
     try { parent.postMessage(Object.assign({ quelle: 'liquid-launcher-widget', typ: typ }, felder || {}), '*'); }
@@ -42,7 +49,7 @@
     if (std > 0)      text = std + ' h ' + min + ' min';
     else if (min > 0) text = min + ' min ' + (sek % 60) + ' s';
     else              text = sek + ' s';
-    mitte.innerHTML = '<div class="val">' + text + '</div><div class="lbl">Launcher läuft</div>';
+    mitte.innerHTML = '<div class="val">' + text + '</div><div class="lbl">' + tx('widget_uptime', 'Launcher läuft') + '</div>';
   }
 
   function uebernehmen(d) {
@@ -68,7 +75,10 @@
       var st = document.documentElement.style;
       for (var k in d.daten) { if (k.indexOf('--') === 0) st.setProperty(k, d.daten[k]); }
     }
-    if (d.typ === 'daten') uebernehmen(d.daten);
+    if (d.typ === 'daten') {
+      if (d.texte) T = d.texte;
+      uebernehmen(d.daten);
+    }
   });
 
   melde('anfrage');

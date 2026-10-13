@@ -1,0 +1,26 @@
+{
+  "id": "launcher-version",
+  "titel": {
+    "de": "Launcher-Version",
+    "en": "Launcher version",
+    "es": "Versión del launcher",
+    "fr": "Version du launcher",
+    "pt": "Versão do launcher",
+    "it": "Versione del launcher",
+    "pl": "Wersja launchera",
+    "tr": "Launcher sürümü",
+    "ru": "Версия лаунчера"
+  },
+  "beschreibung": {
+    "de": "Die Version dieser Anwendung.",
+    "en": "The version of this application.",
+    "es": "La versión de esta aplicación.",
+    "fr": "La version de cette application.",
+    "pt": "A versão desta aplicação.",
+    "it": "La versione di questa applicazione.",
+    "pl": "Wersja tej aplikacji.",
+    "tr": "Bu uygulamanın sürümü.",
+    "ru": "Версия этого приложения."
+  },
+  "breite": 1
+}

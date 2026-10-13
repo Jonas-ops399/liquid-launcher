@@ -1,0 +1,26 @@
+{
+  "id": "speicher-mods",
+  "titel": {
+    "de": "mods-Ordner",
+    "en": "mods folder",
+    "es": "Carpeta de mods",
+    "fr": "Dossier de mods",
+    "pt": "Pasta mods",
+    "it": "Cartella mods",
+    "pl": "Folder mods",
+    "tr": "mods klasörü",
+    "ru": "Папка mods"
+  },
+  "beschreibung": {
+    "de": "Grösse des mods-Ordners und Anzahl der Mods.",
+    "en": "Size of the mods folder and number of mods.",
+    "es": "Tamaño de la carpeta de mods y número de mods.",
+    "fr": "Taille du dossier de mods et nombre de mods.",
+    "pt": "Tamanho da pasta mods e número de mods.",
+    "it": "Dimensione della cartella mods e numero di mods.",
+    "pl": "Rozmiar folderu mods i liczba modów.",
+    "tr": "mods klasörünün boyutu ve mod sayısı.",
+    "ru": "Размер папки mods и количество модов."
+  },
+  "breite": 1
+}

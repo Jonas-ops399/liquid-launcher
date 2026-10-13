@@ -1,0 +1,26 @@
+{
+  "id": "system-info",
+  "titel": {
+    "de": "System",
+    "en": "System",
+    "es": "Sistema",
+    "fr": "Système",
+    "pt": "Sistema",
+    "it": "Sistema",
+    "pl": "System",
+    "tr": "Sistem",
+    "ru": "Система"
+  },
+  "beschreibung": {
+    "de": "Betriebssystem, Version und Architektur.",
+    "en": "Operating system, version and architecture.",
+    "es": "Sistema operativo, versión y arquitectura.",
+    "fr": "Système d’exploitation, version et architecture.",
+    "pt": "Sistema operativo, versão e arquitetura.",
+    "it": "Sistema operativo, versione e architettura.",
+    "pl": "System operacyjny, wersja i architektura.",
+    "tr": "İşletim sistemi, sürüm ve mimari.",
+    "ru": "Операционная система, версия и архитектура."
+  },
+  "breite": 1
+}
