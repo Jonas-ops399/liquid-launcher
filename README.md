@@ -1216,7 +1216,7 @@ und echte `saves`-Ordner enthalten.
    eigene Nachricht aus den CSS-Variablen des Fensters, die stimmen auch nach
    einem Farbwechsel.
 
-**Verifiziert.** 135 Prüfungen in `test-widgets.js` (Suche, Manifest inkl.
+**Verifiziert.** 141 Prüfungen in `test-widgets.js` (Suche, Manifest inkl.
 Sprachobjekt, Pfad-Traversal, Positivliste mit 18 Feldern), **81** in
 `test-widget-systemdaten.js` (reines Node: die CPU-Auslastung aus zwei
 Messpunkten, der erste Wert `null`, Ordnergröße und Eintragszahl mit und ohne
@@ -1263,7 +1263,7 @@ node test-prozess-stoppen.js        # Beenden ist kein Absturz (19, braucht Java
 node test-hover-move.js             # Hover-Bewegung der Karten (29 Prüfungen)
 node test-einstellungen.js          # Einstellungen, Suche, Schrift, Paritaet neun Sprachen (198 Prüfungen)
 node test-snippets.js               # die injizierten Snippets sind gültiges JS (46)
-node test-widgets.js                # Widget-Suche, Manifest, Positivliste (135 Prüfungen)
+node test-widgets.js                # Widget-Suche, Manifest, Positivliste, Paketfilter (141 Prüfungen)
 node test-widget-systemdaten.js     # System-/Dateiwerte der D4-Kacheln (81 Prüfungen)
 node test-widget-anzeige.js         # was die Kacheln wirklich anzeigen (278 Prüfungen)
 node test-ms-registration.js        # Azure-Registrierung gegen Microsoft prüfen (Netz)
