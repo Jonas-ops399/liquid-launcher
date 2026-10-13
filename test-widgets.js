@@ -394,6 +394,42 @@ group('8. Die mitgelieferten Widgets sind in Ordnung');
   }
 }
 
+// =====================================================================
+group('9. Der Bauplan liefert die eingebauten Widgets mit');
+// =====================================================================
+// Der Fehler, der dazu gefuehrt hat: package.json "build.files" enthielt nur
+// src/**/*. Die eingebauten Widgets liegen aber in widgets/ auf der
+// Projektwurzel. electron-builder packt nur, was in "files" steht - im
+// fertigen Programm fehlten damit ALLE Kacheln, und jede meldete
+// "Widget nicht gefunden: <id>". Der Test haelt das fest.
+{
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+  const dateien = (pkg.build && Array.isArray(pkg.build.files)) ? pkg.build.files : [];
+  // Nur positive Muster ("!..." schliesst aus und darf nicht als Abdeckung
+  // zaehlen).
+  const positiv = dateien.filter((e) => typeof e === 'string' && !e.startsWith('!'));
+
+  function decktAb(ordner) {
+    return positiv.some((e) => e.replace(/^\.\//, '').split(/[\\/]/)[0] === ordner);
+  }
+
+  ok(dateien.length > 0, 'package.json hat einen build.files-Eintrag');
+  ok(decktAb('src'), 'src/ wird ins Paket gelegt');
+  ok(decktAb('widgets'),
+     'widgets/ wird ins Paket gelegt (sonst fehlen alle eingebauten Kacheln)');
+  ok(positiv.some((e) => e.replace(/^\.\//, '') === 'package.json'),
+     'package.json wird ins Paket gelegt');
+  // Das Kotlin-Geruest ist ein Prototyp und gehoert nicht ins Paket.
+  ok(dateien.some((e) => typeof e === 'string' && e.startsWith('!') && e.includes('kotlin')),
+     'der Kotlin-Prototyp ist vom Paket ausgeschlossen');
+
+  // Gegenprobe: der Hauptprozess sucht die eingebauten Widgets zwei Ebenen
+  // ueber src/main. Genau dieser Ordner muss also im Paket landen.
+  const ausSichtHauptprozess = path.join(__dirname, 'src', 'main', '..', '..', 'widgets');
+  ok(fs.existsSync(ausSichtHauptprozess),
+     'der Ordner, den der Hauptprozess erwartet, existiert');
+}
+
 // ---------------------------------------------------------------------
 console.log('\n=====================================================');
 fs.rmSync(WURZEL, { recursive: true, force: true });

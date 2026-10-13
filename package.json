@@ -1,7 +1,7 @@
 {
   "name": "liquid-launcher",
   "productName": "Liquid Launcher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Inoffizieller Minecraft-Launcher mit Liquid-Glass-UI (kein Mojang-Branding)",
   "main": "src/main/main.js",
   "scripts": {
@@ -22,11 +22,32 @@
   "build": {
     "appId": "com.example.liquidlauncher",
     "productName": "Liquid Launcher",
+    "directories": {
+      "output": "dist"
+    },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Liquid Launcher",
+      "artifactName": "Liquid-Launcher-Setup-${version}.exe"
     },
     "files": [
       "src/**/*",
+      "!src/main/kotlin/**",
+      "widgets/**/*",
       "package.json"
     ]
   }
