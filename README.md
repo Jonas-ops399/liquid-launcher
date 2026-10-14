@@ -648,16 +648,23 @@ Idee wie beim Modpack-Import, nur für Texturen und Sprachdateien.
   Lesen, Ein-/Ausschalten, Zip-Slip, Versionstabelle, Vorschaubild) und 63 im
   echten Fenster in `test-ressourcenpakete-fenster.js`.
 
-### Skin-Anzeige: Ganzkörper und zweite Ebene
+### Skin-Anzeige: Kopf, Ganzkörper und zweite Ebene
 
-Das Konto trägt statt eines Kopfausschnitts ein neutrales Personen-Symbol.
-Der Skin wird nur noch als ganze Figur gezeigt: Ein Klick auf das Skin-Feld
-der Seitenleiste öffnet direkt die Ganzkörper-Ansicht.
+Der Skin erscheint an drei Stellen als Kopf und im Skin-Feld als ganze Figur.
+Ein Klick auf das Skin-Feld der Seitenleiste öffnet direkt die
+Ganzkörper-Ansicht.
 
-- **Keine Kopfanzeige mehr.** Weder neben dem Namen noch in der Profilkarte
-  wird ein Kopf aus der Textur geschnitten. Ein Kopf ist bei einem Skin nur ein
-  Achtel der Figur und verdeckte die zweite Ebene (Hut, Jacke, Ärmel) - die
-  Ansicht zeigt deshalb gleich die volle Gestalt.
+- **Kopf an drei Stellen.** Neben dem Microsoft-Konto in der Liste, im Feld der
+  Seitenleiste und in der Profilkarte zeigt der Launcher den Kopf des Skins.
+  Der Kopf ist der 8×8-Ausschnitt der 64×64-Vorlage: Vorderseite bei `[8,8]`,
+  Hut-Ebene bei `[40,8]`, als zwei Hintergrundbilder übereinander
+  (`skinKopfStil`, `image-rendering: pixelated`). Ohne Skin steht dort weiter
+  das neutrale Personen-Symbol. Kein fremder Dienst (etwa crafatar): die
+  Textur ist dieselbe, die die Ganzkörper-Figur ohnehin lädt.
+
+- **Die volle Gestalt zeigt weiter alles.** Ein Kopf ist bei einem Skin nur ein
+  Achtel der Figur; die Ganzkörper-Ansicht zeigt deshalb zusätzlich die zweite
+  Ebene (Hut, Jacke, Ärmel).
 - **Die Figur wird aus der Textur gebaut, nicht auf ein Bild gehofft.** Aus der
   64×64-Skin-PNG (auch das alte 64×32-Format wird erkannt) setzt der Renderer
   sechs Körperteile als CSS-3D-Boxen zusammen (`SKIN_TEILE`): Kopf, Körper,
@@ -683,11 +690,41 @@ der Seitenleiste öffnet direkt die Ganzkörper-Ansicht.
   `skins:setActive` bleibt deshalb bewusst abgelehnt. Ohne das anzumeldende
   Konto gibt es keinen Weg, und einen zu erfinden wäre eine Lüge in der
   Oberfläche.
-- **Verifiziert.** 15 Prüfungen in `test-skin-ganzkoerper.js` (reines Node):
-  dass Kopf-Dialog, -Würfel und Kopfbild entfernt sind, dass das Feld der
-  Seitenleiste direkt die Ganzkörper-Ansicht öffnet, dass Auswahl, Entfernen und
-  Meldung dort sitzen, die sechs Teile der zweiten Ebene samt Texturkoordinaten,
-  die durchsichtige Grundfläche und das Erkennen des alten 64×32-Formats.
+- **Verifiziert.** 15 Prüfungen in `test-skin-ganzkoerper.js` (reines Node) für
+  die Ganzkörper-Figur: dass die alte, kaputte Profilkarten-Kopfanzeige weg
+  ist, dass das Feld der Seitenleiste die Figur direkt öffnet, dass Auswahl,
+  Entfernen und Meldung dort sitzen, die sechs Teile der zweiten Ebene samt
+  Texturkoordinaten, die durchsichtige Grundfläche und das Erkennen des alten
+  64×32-Formats. Dazu die Kopf-Prüfungen in `test-startseite.js`: die drei
+  Stellen, die Textur-Ausschnitte `[8,8]` und `[40,8]`, der neutrale Rückfall
+  und dass kein fremder Kopf-Dienst im Renderer steht.
+
+### Startseite: die erste Einrichtung
+
+Beim ersten Start erscheint eine Startseite, die in vier Schritten alles
+Wesentliche einstellt. Sie ist überspringbar und lässt sich später über die
+Einstellungen erneut öffnen.
+
+- **Vier Schritte.** Sprache (dieselben neun Sprachen wie in den Einstellungen),
+  Microsoft-Konto (Client-ID und Anmeldung), erste Instanz (Name, Version aus
+  dem echten Versionsmanifest, Modloader) und ein Abschluss mit der
+  Zusammenfassung. „Weiter", „Zurück" und „Überspringen" sitzen fest am Fuß;
+  die Schrittleiste oben springt direkt zu einem Schritt.
+- **Nur beim ersten Start.** Der Abschluss wird als `onboardingDone` in
+  `settings.json` gemerkt (`settings:get/set` führt Teilwerte zusammen, der
+  Hauptprozess braucht dafür keine neue Route). Fehlt der Wert, gilt die
+  Einrichtung als offen.
+- **Die Texte folgen der Sprache.** Sie stehen nicht als `data-i18n` im Markup,
+  sondern werden über `obTexteAnwenden()` aus `t()` geholt. So muss der
+  Onboarding-Bereich nicht in allen neun Sprachblöcken mitwachsen, und die
+  Sprachparität in `test-einstellungen.js` bleibt unberührt.
+- **Ohne echte App bleibt nichts kaputt.** Fehlt `window.launcher` (Vorschau im
+  Browser), zeigt der Kontoschritt einen freundlichen Hinweis statt eines
+  Absturzes; die Instanz-Versionen kommen dann aus dem Mock.
+- **Verifiziert.** `test-startseite.js` (reines Node, 54 Prüfungen) sichert
+  Aufbau und Verdrahtung: die drei Kopf-Stellen, die vier Schritte, die
+  Client-ID-/Anmelde-/Instanz-Verdrahtung, `onboardingDone`, das erneute
+  Öffnen und die neun Sprachen des Textblocks.
 
 ### Kleine Korrekturen aus der Ideen-Liste
 
@@ -1276,6 +1313,7 @@ node_modules\electron\dist\electron.exe test-modpacks-fenster.js      # echtes F
 node_modules\electron\dist\electron.exe test-modpack-import-fenster.js # echtes Fenster: Import-Dialog, Suche, 4 Sprachen (57)
 node_modules\electron\dist\electron.exe test-ressourcenpakete-fenster.js # echtes Fenster: Ansicht, Schalter, Loeschen (63)
 node test-skin-ganzkoerper.js       # Skin ohne Kopfanzeige: Ganzkoerper, zweite Ebene (15 Prüfungen)
+node test-startseite.js             # Skin-Kopf an drei Stellen, erste Einrichtung (54 Prüfungen)
 ```
 
 `test-modpacks-fenster.js` heißt mit dem Zusatz `-fenster`, weil ein Test ohne
@@ -2162,7 +2200,8 @@ test-modpack-import-fenster.js  echtes Fenster: Import-Dialog, Ablehnung, Suche,
                           4 Sprachen
 test-ressourcenpakete.js   Ressourcenpakete: Ordner, pack.mcmeta, options.txt
 test-ressourcenpakete-fenster.js  echtes Fenster: Ansicht, Schalter, Loeschen
-test-skin-ganzkoerper.js   Skin ohne Kopfanzeige: Ganzkoerper-Figur, zweite Ebene
+test-skin-ganzkoerper.js   Ganzkoerper-Figur aus sechs Teilen, zweite Ebene
+test-startseite.js         Skin-Kopf an drei Stellen, erste Einrichtung (Onboarding)
 test-modpacks-fenster.js   echtes Fenster: Modpack-Dropdown, Dialog, Altbestand,
                           Loeschen, und dass die Modsliste dem Wechsel folgt
 test-prozess-stoppen.js    Beenden ist kein Absturz, gegen einen echten Prozess

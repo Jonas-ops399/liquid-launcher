@@ -385,11 +385,17 @@
   .nav-item svg{ width:19px; height:19px; }
 
   .sidebar-spacer{flex:1;}
+  /* Das Feld in der Leiste zeigt den Kopf des aktiven Kontos. Ohne Konto
+     bleibt das neutrale Personen-Symbol stehen - deshalb display:flex zum
+     Zentrieren und overflow:hidden, damit die Textur an der runden Kante
+     sauber abgeschnitten wird. */
   .avatar{
     width:42px; height:42px; border-radius:13px;
     background: linear-gradient(150deg, #e8c07d, #c98a4b);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 10px rgba(0,0,0,.3);
     margin-bottom:6px;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
   }
 
   /* ---------- main area ---------- */
@@ -734,6 +740,111 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
     background-color: rgba(255,255,255,0.06);
   }
+
+  /* ---------- Erste Einrichtung (Startseite) ----------
+     Erscheint beim ersten Start und fuehrt durch Sprache, Microsoft-Konto und
+     die erste Instanz. Gleiche Glas-Optik wie der restliche Launcher:
+     dieselben Farbvariablen, dieselben weichen Kanten, dieselbe
+     Groessenrechnung calc(... * var(--fs)). */
+  .ob-overlay{
+    position:fixed; inset:0; z-index:110;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    background: rgba(6,10,14,0.55);
+    -webkit-backdrop-filter:blur(22px) saturate(120%);
+    backdrop-filter:blur(22px) saturate(120%);
+  }
+  .ob-overlay[hidden]{ display:none; }
+  .ob-overlay .ob-panel{ animation: rise 0.5s cubic-bezier(.16,1,.3,1) both; }
+  .ob-panel{
+    width:min(720px, 100%); max-height:92vh;
+    display:flex; flex-direction:column; gap:18px;
+    padding:26px 30px;
+    background: var(--glass-fill-strong);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    border:1px solid var(--glass-border);
+    border-radius:22px;
+    box-shadow: 0 24px 60px -16px var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,.35);
+    overflow:auto;
+  }
+  .ob-kopf{ display:flex; align-items:center; gap:14px; }
+  .ob-kopf .ob-logo{ margin-bottom:0; flex-shrink:0; }
+  .ob-kopf h2{ margin:0; font-size:calc(19px * var(--fs)); font-weight:650; }
+  .ob-sub{ margin:3px 0 0; font-size:calc(12.5px * var(--fs)); color:var(--text-lo); }
+  .ob-schritte{ display:flex; flex-wrap:wrap; gap:8px; }
+  .ob-schritt{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 12px; border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    color: var(--text-lo);
+    font:inherit; font-size:calc(12.5px * var(--fs));
+    cursor:pointer;
+    transition: background .25s, color .25s, border-color .25s;
+  }
+  .ob-schritt:hover{ background: rgba(255,255,255,0.12); color: var(--text-hi); }
+  .ob-schritt .ob-nr{
+    width:20px; height:20px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(255,255,255,0.12);
+    font-size:calc(11px * var(--fs)); font-weight:600;
+  }
+  .ob-schritt.aktiv{
+    color: var(--text-hi);
+    background: rgba(255,255,255,0.16);
+    border-color: rgba(255,255,255,0.35);
+  }
+  .ob-schritt.erledigt .ob-nr{
+    background: linear-gradient(155deg, var(--btn-from), var(--btn-to));
+    color: var(--btn-text);
+  }
+  .ob-inhalt{ min-height:230px; }
+  .ob-seite[hidden]{ display:none; }
+  .ob-seite h3{ margin:0 0 6px; font-size:calc(16px * var(--fs)); font-weight:600; }
+  .ob-hint{ margin:0 0 14px; font-size:calc(12.5px * var(--fs)); color:var(--text-lo); line-height:1.55; }
+  .ob-lang-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .ob-clientid{ display:flex; gap:8px; }
+  .ob-clientid input{
+    flex:1; min-width:0;
+    background: rgba(0,0,0,0.28);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:11px; color:var(--text-hi);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size:calc(12.5px * var(--fs));
+    padding:10px 12px;
+  }
+  .ob-clientid input:focus{
+    outline:none; border-color: rgba(255,184,107,0.65);
+  }
+  .ob-clientid input::placeholder{ color: rgba(255,255,255,0.28); }
+  .ob-inst-technik{ display:flex; flex-wrap:wrap; gap:12px; }
+  .ob-inst-technik .inst-feld{ flex:1 1 200px; }
+  .ob-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .ob-status{
+    margin-top:12px; padding:10px 13px; border-radius:11px;
+    border:1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.07);
+    font-size:calc(12.5px * var(--fs)); line-height:1.5;
+    white-space:pre-wrap; overflow-wrap:anywhere;
+  }
+  .ob-status.ok{ border-color: rgba(126,232,160,0.45); }
+  .ob-status.err{
+    border-color: rgba(255,122,138,0.55);
+    background: rgba(255,122,138,0.12);
+  }
+  .ob-status[hidden]{ display:none; }
+  .ob-fuss{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:2px; }
+  .ob-fuss-rechts{ display:flex; gap:8px; }
+  .ob-skip{
+    background:none; border:none; cursor:pointer; padding:6px 2px;
+    color: var(--text-lo); font:inherit; font-size:calc(12.5px * var(--fs));
+  }
+  .ob-skip:hover{ color: var(--text-hi); }
+  .ob-weiter{ padding:10px 22px; }
+  /* Schriftgroesse/Sprache wirken sofort auch im Onboarding. */
+  .ll-wenig-bewegung .ob-overlay .ob-panel{ animation:none; }
+  @media (prefers-reduced-motion: reduce){ .ob-overlay .ob-panel{ animation:none; } }
 
   .inst-dialog-zeile{ display:flex; gap:8px; justify-content:flex-end; }
   .inst-dialog-zeile button{
@@ -1506,6 +1617,7 @@
     display:flex; align-items:center; justify-content:center;
     font-size:calc(16px * var(--fs));
     flex-shrink:0;
+    overflow:hidden;   /* der Skin-Kopf soll an der runden Kante enden */
   }
   .mod-info{ flex:1; min-width:0; }
   .mod-name{ font-size:calc(13.5px * var(--fs)); font-weight:600; }
@@ -1712,6 +1824,31 @@
   .profile-meta{flex:1;}
   .profile-meta .name{ font-weight:600; font-size:calc(15.5px * var(--fs)); }
   .profile-meta .sub{ font-size:calc(12.5px * var(--fs)); color:var(--text-lo); margin-top:2px;}
+
+  /* ---------- Skin-Kopf ----------
+     Der Kopf ist der 8x8-Ausschnitt der 64x64-Skin-Vorlage: die Vorderseite
+     liegt bei [8,8], die Hut-Ebene (Overlay) bei [40,8]. Beide werden lokal
+     aus derselben Textur gezeichnet, die auch die Ganzkoerper-Figur benutzt -
+     die eigene Datei oder der Skin des Kontos. Ein fremder Dienst (z.B.
+     crafatar) wird dafuer NICHT kontaktiert. image-rendering:pixelated haelt
+     die 8x8-Pixel scharf, border-radius:inherit schneidet die Textur auf die
+     runde Form des umgebenden Feldes zu. */
+  .skin-kopf{
+    display:block;
+    background-repeat:no-repeat;
+    background-color: rgba(255,255,255,0.06);
+    image-rendering:pixelated;
+    border-radius:inherit;
+  }
+  /* Ohne Textur (oder vor dem Laden) steht hier das neutrale Personen-Symbol. */
+  .profil-kopf svg{ width:24px; height:24px; }
+  .profil-kopf{
+    width:48px; height:48px; border-radius:14px;
+    background: linear-gradient(150deg, #e8c07d, #c98a4b);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+    overflow:hidden; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; color:var(--text-hi);
+  }
 
   .stat-card{ padding:22px; flex:1; display:flex; flex-direction:column; gap:14px; overflow:hidden; }
   .stat-title{ font-size:calc(13px * var(--fs)); color:var(--text-lo); font-weight:500;}
@@ -2268,7 +2405,9 @@
     </div>
 
     <div class="glass profile-card view-play" id="profileCard" data-block="profile">
+      <div class="profil-kopf" id="profilKopf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></div>
       <div class="profile-meta">
+
         <div class="name" id="profileName">Finn_Baukranz</div>
         <div class="sub" id="profileSub">Premium-Konto · online seit 41 Min.</div>
       </div>
@@ -2433,6 +2572,7 @@
 
                 <button class="settings-zuruecksetzen" id="darstellungZuruecksetzen" type="button"
                         data-i18n="settings_font_reset">Schrift und Größe zurücksetzen</button>
+                <button class="settings-zuruecksetzen" id="obErneutBtn" type="button">Erste Einrichtung erneut anzeigen</button>
               </section>
 
               <!-- ---------- Karte 2: Startseite ---------- -->
@@ -2691,6 +2831,93 @@
         <button type="button" class="mod-action" id="skinVergessenBtn" data-i18n="skin_forget">Eigene Datei entfernen</button>
         <button type="button" id="skinVollReset" data-i18n="skin_voll_reset">Zurücksetzen</button>
         <button type="button" class="sekundaer" id="skinVollZu" data-i18n="skin_close">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Erste Einrichtung: die Startseite beim ersten Start. Fuehrt durch
+       Sprache, Microsoft-Konto und die erste Instanz. Die Texte setzt das
+       Skript (obTexteAnwenden) - sie stehen bewusst nicht als data-i18n im
+       Markup, weil die Sprachpruefung sonst fuer jede Sprache denselben
+       Schluessel verlangt und dieser Bereich bewusst schlank bleibt. -->
+  <div class="ob-overlay" id="onboarding" hidden>
+    <div class="ob-panel" role="dialog" aria-modal="true" aria-labelledby="obTitel">
+      <div class="ob-kopf">
+        <div class="logo ob-logo"><span></span><span></span><span></span><span></span></div>
+        <div>
+          <h2 id="obTitel">Willkommen bei Liquid Launcher</h2>
+          <p class="ob-sub" id="obSub">Richte in wenigen Schritten alles ein.</p>
+        </div>
+      </div>
+
+      <div class="ob-schritte" id="obSchritte">
+        <button class="ob-schritt" type="button" data-ob-step="sprache"><span class="ob-nr">1</span><span class="ob-label">Sprache</span></button>
+        <button class="ob-schritt" type="button" data-ob-step="konto"><span class="ob-nr">2</span><span class="ob-label">Konto</span></button>
+        <button class="ob-schritt" type="button" data-ob-step="instanz"><span class="ob-nr">3</span><span class="ob-label">Instanz</span></button>
+        <button class="ob-schritt" type="button" data-ob-step="fertig"><span class="ob-nr">4</span><span class="ob-label">Fertig</span></button>
+      </div>
+
+      <div class="ob-inhalt">
+        <section class="ob-seite" data-ob-page="sprache">
+          <h3 id="obLangTitle">Sprache wählen</h3>
+          <p class="ob-hint" id="obLangHint">Die Sprache lässt sich jederzeit in den Einstellungen ändern.</p>
+          <div class="ob-lang-row" id="obLangRow"></div>
+        </section>
+
+        <section class="ob-seite" data-ob-page="konto" hidden>
+          <h3 id="obAccountTitle">Mit Microsoft anmelden</h3>
+          <p class="ob-hint" id="obAccountHint">Für das Starten des Spiels und das Öffnen von Welten. Du brauchst einmalig eine Azure-Client-ID.</p>
+          <div class="ob-clientid">
+            <input type="text" id="obClientId" spellcheck="false" autocomplete="off" placeholder="Azure Application (client) ID">
+            <button class="mod-action" id="obClientIdSave" type="button">Speichern</button>
+          </div>
+          <div class="ob-status" id="obClientIdStatus" hidden></div>
+          <div class="ob-row">
+            <button class="play-btn" id="obLoginBtn" type="button">Mit Microsoft anmelden</button>
+          </div>
+          <div class="ob-status" id="obLoginStatus" hidden></div>
+        </section>
+
+        <section class="ob-seite" data-ob-page="instanz" hidden>
+          <h3 id="obInstTitle">Erste Instanz anlegen</h3>
+          <p class="ob-hint" id="obInstHint">Eine Instanz ist ein Modpack mit eigener Version, eigenem Modloader und eigenen Mods.</p>
+          <label class="inst-feld">
+            <span id="obInstNameLabel">Name</span>
+            <input type="text" id="obInstName" maxlength="60" value="Mein Modpack" spellcheck="false" autocomplete="off">
+          </label>
+          <div class="ob-inst-technik">
+            <label class="inst-feld">
+              <span id="obInstVersionLabel">Minecraft-Version</span>
+              <select id="obInstVersion"></select>
+            </label>
+            <label class="inst-feld">
+              <span id="obInstLoaderLabel">Modloader</span>
+              <select id="obInstLoader">
+                <option value="vanilla">Vanilla</option>
+                <option value="fabric" selected>Fabric</option>
+                <option value="forge">Forge</option>
+              </select>
+            </label>
+          </div>
+          <div class="ob-row">
+            <button class="play-btn" id="obInstCreate" type="button">Instanz anlegen</button>
+          </div>
+          <div class="ob-status" id="obInstStatus" hidden></div>
+        </section>
+
+        <section class="ob-seite" data-ob-page="fertig" hidden>
+          <h3 id="obDoneTitle">Alles bereit</h3>
+          <p class="ob-hint" id="obDoneHint">Du kannst den Launcher jetzt benutzen. Diese Einrichtung erreichst du später über die Einstellungen.</p>
+          <div class="ob-status ok" id="obDoneStatus"></div>
+        </section>
+      </div>
+
+      <div class="ob-fuss">
+        <button class="ob-skip" id="obSkip" type="button">Überspringen</button>
+        <div class="ob-fuss-rechts">
+          <button class="mod-action" id="obZurueck" type="button">Zurück</button>
+          <button class="play-btn ob-weiter" id="obWeiter" type="button">Weiter</button>
+        </div>
       </div>
     </div>
   </div>
@@ -4946,6 +5173,259 @@
       settings_microsoft_howto: "Инструкция: создать приложение в Azure"
     }
   };
+
+  // Texte der ersten Einrichtung (Startseite). Sie stehen bewusst hier und
+  // nicht in den Sprachbloecken oben: der Onboarding-Bereich ist neu und
+  // soll die grossen Bloecke nicht aufblaehen. Fehlt eine Sprache, greift
+  // ohnehin die t()-Regel und zeigt Deutsch.
+  const OB_TEXTE = {
+    de: {
+      ob_title: 'Willkommen bei Liquid Launcher',
+      ob_subtitle: 'Richte in wenigen Schritten alles ein.',
+      ob_step_lang: 'Sprache', ob_step_account: 'Konto', ob_step_instance: 'Instanz', ob_step_done: 'Fertig',
+      ob_lang_title: 'Sprache wählen',
+      ob_lang_hint: 'Die Sprache lässt sich jederzeit in den Einstellungen ändern.',
+      ob_account_title: 'Mit Microsoft anmelden',
+      ob_account_hint: 'Für das Starten des Spiels und das Öffnen von Welten. Du brauchst einmalig eine Azure-Client-ID.',
+      ob_account_login: 'Mit Microsoft anmelden',
+      ob_clientid_ok: 'Client-ID hinterlegt — du kannst dich anmelden.',
+      ob_clientid_missing: 'Noch keine Client-ID. Trage die Application (client) ID aus dem Azure-Portal ein.',
+      ob_clientid_saved: 'Gespeichert: {id}',
+      ob_login_running: 'Microsoft-Fenster geöffnet — bitte dort anmelden …',
+      ob_login_ok: 'Angemeldet als {name}.',
+      ob_login_failed: 'Anmeldung fehlgeschlagen.',
+      ob_instance_title: 'Erste Instanz anlegen',
+      ob_instance_hint: 'Eine Instanz ist ein Modpack mit eigener Version, eigenem Modloader und eigenen Mods.',
+      ob_instance_create: 'Instanz anlegen',
+      ob_done_title: 'Alles bereit',
+      ob_done_hint: 'Du kannst den Launcher jetzt benutzen. Diese Einrichtung erreichst du später über die Einstellungen.',
+      ob_done_summary: '{konten} Konto(en) · {instanzen} Instanz(en)',
+      ob_back: 'Zurück', ob_next: 'Weiter', ob_finish: 'Launcher öffnen', ob_skip: 'Überspringen',
+      ob_reopen: 'Erste Einrichtung erneut anzeigen',
+      ob_app_only: 'Nur in der echten App verfügbar.'
+    },
+    en: {
+      ob_title: 'Welcome to Liquid Launcher',
+      ob_subtitle: 'Set everything up in a few steps.',
+      ob_step_lang: 'Language', ob_step_account: 'Account', ob_step_instance: 'Instance', ob_step_done: 'Done',
+      ob_lang_title: 'Choose language',
+      ob_lang_hint: 'You can change the language later in the settings.',
+      ob_account_title: 'Sign in with Microsoft',
+      ob_account_hint: 'Needed to launch the game and open worlds. You need an Azure client ID once.',
+      ob_account_login: 'Sign in with Microsoft',
+      ob_clientid_ok: 'Client ID saved — you can sign in.',
+      ob_clientid_missing: 'No client ID yet. Enter the Application (client) ID from the Azure portal.',
+      ob_clientid_saved: 'Saved: {id}',
+      ob_login_running: 'Microsoft window opened — please sign in there …',
+      ob_login_ok: 'Signed in as {name}.',
+      ob_login_failed: 'Sign-in failed.',
+      ob_instance_title: 'Create your first instance',
+      ob_instance_hint: 'An instance is a modpack with its own version, mod loader and mods.',
+      ob_instance_create: 'Create instance',
+      ob_done_title: 'All set',
+      ob_done_hint: 'You can use the launcher now. You can reopen this setup later from the settings.',
+      ob_done_summary: '{konten} account(s) · {instanzen} instance(s)',
+      ob_back: 'Back', ob_next: 'Next', ob_finish: 'Open launcher', ob_skip: 'Skip',
+      ob_reopen: 'Show first-time setup again',
+      ob_app_only: 'Only available in the real app.'
+    },
+    es: {
+      ob_title: 'Te damos la bienvenida a Liquid Launcher',
+      ob_subtitle: 'Configúralo todo en unos pocos pasos.',
+      ob_step_lang: 'Idioma', ob_step_account: 'Cuenta', ob_step_instance: 'Instancia', ob_step_done: 'Listo',
+      ob_lang_title: 'Elegir idioma',
+      ob_lang_hint: 'Puedes cambiar el idioma más tarde en los ajustes.',
+      ob_account_title: 'Iniciar sesión con Microsoft',
+      ob_account_hint: 'Necesario para iniciar el juego y abrir mundos. Necesitas un client ID de Azure una vez.',
+      ob_account_login: 'Iniciar sesión con Microsoft',
+      ob_clientid_ok: 'Client ID guardado — ya puedes iniciar sesión.',
+      ob_clientid_missing: 'Aún no hay client ID. Introduce el Application (client) ID del portal de Azure.',
+      ob_clientid_saved: 'Guardado: {id}',
+      ob_login_running: 'Se abrió la ventana de Microsoft — inicia sesión allí …',
+      ob_login_ok: 'Sesión iniciada como {name}.',
+      ob_login_failed: 'No se pudo iniciar sesión.',
+      ob_instance_title: 'Crear tu primera instancia',
+      ob_instance_hint: 'Una instancia es un modpack con su propia versión, modloader y mods.',
+      ob_instance_create: 'Crear instancia',
+      ob_done_title: 'Todo listo',
+      ob_done_hint: 'Ya puedes usar el launcher. Puedes reabrir esta configuración desde los ajustes.',
+      ob_done_summary: '{konten} cuenta(s) · {instanzen} instancia(s)',
+      ob_back: 'Atrás', ob_next: 'Siguiente', ob_finish: 'Abrir launcher', ob_skip: 'Omitir',
+      ob_reopen: 'Mostrar de nuevo la configuración inicial',
+      ob_app_only: 'Solo disponible en la app real.'
+    },
+    fr: {
+      ob_title: 'Bienvenue dans Liquid Launcher',
+      ob_subtitle: 'Tout configurer en quelques étapes.',
+      ob_step_lang: 'Langue', ob_step_account: 'Compte', ob_step_instance: 'Instance', ob_step_done: 'Terminé',
+      ob_lang_title: 'Choisir la langue',
+      ob_lang_hint: 'Tu peux changer la langue plus tard dans les paramètres.',
+      ob_account_title: 'Se connecter avec Microsoft',
+      ob_account_hint: 'Nécessaire pour lancer le jeu et ouvrir des mondes. Il te faut un client ID Azure une fois.',
+      ob_account_login: 'Se connecter avec Microsoft',
+      ob_clientid_ok: 'Client ID enregistré — tu peux te connecter.',
+      ob_clientid_missing: "Pas encore de client ID. Saisis l'Application (client) ID du portail Azure.",
+      ob_clientid_saved: 'Enregistré : {id}',
+      ob_login_running: 'Fenêtre Microsoft ouverte — connecte-toi là-bas …',
+      ob_login_ok: 'Connecté en tant que {name}.',
+      ob_login_failed: 'Échec de la connexion.',
+      ob_instance_title: 'Créer ta première instance',
+      ob_instance_hint: 'Une instance est un modpack avec sa propre version, son modloader et ses mods.',
+      ob_instance_create: 'Créer l’instance',
+      ob_done_title: 'Tout est prêt',
+      ob_done_hint: 'Tu peux utiliser le launcher maintenant. Tu peux rouvrir cette configuration depuis les réglages.',
+      ob_done_summary: '{konten} compte(s) · {instanzen} instance(s)',
+      ob_back: 'Retour', ob_next: 'Suivant', ob_finish: 'Ouvrir le launcher', ob_skip: 'Passer',
+      ob_reopen: 'Réafficher la configuration initiale',
+      ob_app_only: 'Disponible uniquement dans la vraie app.'
+    },
+    pt: {
+      ob_title: 'Bem-vindo ao Liquid Launcher',
+      ob_subtitle: 'Configura tudo em poucos passos.',
+      ob_step_lang: 'Idioma', ob_step_account: 'Conta', ob_step_instance: 'Instância', ob_step_done: 'Concluído',
+      ob_lang_title: 'Escolher idioma',
+      ob_lang_hint: 'Podes mudar o idioma mais tarde nas definições.',
+      ob_account_title: 'Iniciar sessão com a Microsoft',
+      ob_account_hint: 'Necessário para iniciar o jogo e abrir mundos. Precisas de um client ID do Azure uma vez.',
+      ob_account_login: 'Iniciar sessão com a Microsoft',
+      ob_clientid_ok: 'Client ID guardado — já podes iniciar sessão.',
+      ob_clientid_missing: 'Ainda não há client ID. Introduz o Application (client) ID do portal Azure.',
+      ob_clientid_saved: 'Guardado: {id}',
+      ob_login_running: 'Janela da Microsoft aberta — inicia sessão lá …',
+      ob_login_ok: 'Sessão iniciada como {name}.',
+      ob_login_failed: 'Falha ao iniciar sessão.',
+      ob_instance_title: 'Criar a tua primeira instância',
+      ob_instance_hint: 'Uma instância é um modpack com a sua própria versão, modloader e mods.',
+      ob_instance_create: 'Criar instância',
+      ob_done_title: 'Tudo pronto',
+      ob_done_hint: 'Já podes usar o launcher. Podes reabrir esta configuração nas definições.',
+      ob_done_summary: '{konten} conta(s) · {instanzen} instância(s)',
+      ob_back: 'Voltar', ob_next: 'Seguinte', ob_finish: 'Abrir launcher', ob_skip: 'Ignorar',
+      ob_reopen: 'Mostrar novamente a configuração inicial',
+      ob_app_only: 'Disponível apenas na app real.'
+    },
+    it: {
+      ob_title: 'Benvenuto in Liquid Launcher',
+      ob_subtitle: 'Configura tutto in pochi passi.',
+      ob_step_lang: 'Lingua', ob_step_account: 'Account', ob_step_instance: 'Istanza', ob_step_done: 'Fatto',
+      ob_lang_title: 'Scegli la lingua',
+      ob_lang_hint: 'Puoi cambiare la lingua in seguito nelle impostazioni.',
+      ob_account_title: 'Accedi con Microsoft',
+      ob_account_hint: 'Necessario per avviare il gioco e aprire i mondi. Serve un client ID di Azure una volta.',
+      ob_account_login: 'Accedi con Microsoft',
+      ob_clientid_ok: 'Client ID salvato — puoi accedere.',
+      ob_clientid_missing: 'Nessun client ID. Inserisci l’Application (client) ID dal portale Azure.',
+      ob_clientid_saved: 'Salvato: {id}',
+      ob_login_running: 'Finestra Microsoft aperta — accedi lì …',
+      ob_login_ok: 'Accesso come {name}.',
+      ob_login_failed: 'Accesso non riuscito.',
+      ob_instance_title: 'Crea la tua prima istanza',
+      ob_instance_hint: 'Un’istanza è un modpack con la sua versione, modloader e mod.',
+      ob_instance_create: 'Crea istanza',
+      ob_done_title: 'Tutto pronto',
+      ob_done_hint: 'Ora puoi usare il launcher. Puoi riaprire questa configurazione dalle impostazioni.',
+      ob_done_summary: '{konten} account · {instanzen} istanze',
+      ob_back: 'Indietro', ob_next: 'Avanti', ob_finish: 'Apri launcher', ob_skip: 'Salta',
+      ob_reopen: 'Mostra di nuovo la configurazione iniziale',
+      ob_app_only: 'Disponibile solo nell’app reale.'
+    },
+    pl: {
+      ob_title: 'Witaj w Liquid Launcher',
+      ob_subtitle: 'Skonfiguruj wszystko w kilku krokach.',
+      ob_step_lang: 'Język', ob_step_account: 'Konto', ob_step_instance: 'Instancja', ob_step_done: 'Gotowe',
+      ob_lang_title: 'Wybierz język',
+      ob_lang_hint: 'Język możesz zmienić później w ustawieniach.',
+      ob_account_title: 'Zaloguj się przez Microsoft',
+      ob_account_hint: 'Potrzebne, aby uruchomić grę i otwierać światy. Potrzebujesz jednorazowo client ID z Azure.',
+      ob_account_login: 'Zaloguj się przez Microsoft',
+      ob_clientid_ok: 'Client ID zapisany — możesz się zalogować.',
+      ob_clientid_missing: 'Brak client ID. Wpisz Application (client) ID z portalu Azure.',
+      ob_clientid_saved: 'Zapisano: {id}',
+      ob_login_running: 'Otwarto okno Microsoft — zaloguj się tam …',
+      ob_login_ok: 'Zalogowano jako {name}.',
+      ob_login_failed: 'Logowanie nie powiodło się.',
+      ob_instance_title: 'Utwórz pierwszą instancję',
+      ob_instance_hint: 'Instancja to modpack z własną wersją, modloaderem i modami.',
+      ob_instance_create: 'Utwórz instancję',
+      ob_done_title: 'Wszystko gotowe',
+      ob_done_hint: 'Możesz już korzystać z launchera. Tę konfigurację otworzysz ponownie w ustawieniach.',
+      ob_done_summary: '{konten} konto/konta · {instanzen} instancja/instancje',
+      ob_back: 'Wstecz', ob_next: 'Dalej', ob_finish: 'Otwórz launcher', ob_skip: 'Pomiń',
+      ob_reopen: 'Pokaż ponownie pierwszą konfigurację',
+      ob_app_only: 'Dostępne tylko w prawdziwej aplikacji.'
+    },
+    tr: {
+      ob_title: 'Liquid Launcher’a hoş geldin',
+      ob_subtitle: 'Her şeyi birkaç adımda ayarla.',
+      ob_step_lang: 'Dil', ob_step_account: 'Hesap', ob_step_instance: 'Örnek', ob_step_done: 'Bitti',
+      ob_lang_title: 'Dil seç',
+      ob_lang_hint: 'Dili daha sonra ayarlardan değiştirebilirsin.',
+      ob_account_title: 'Microsoft ile oturum aç',
+      ob_account_hint: 'Oyunu başlatmak ve dünyaları açmak için gerekli. Bir kez Azure client ID gerekir.',
+      ob_account_login: 'Microsoft ile oturum aç',
+      ob_clientid_ok: 'Client ID kaydedildi — oturum açabilirsin.',
+      ob_clientid_missing: 'Henüz client ID yok. Azure portalından Application (client) ID gir.',
+      ob_clientid_saved: 'Kaydedildi: {id}',
+      ob_login_running: 'Microsoft penceresi açıldı — lütfen orada oturum aç …',
+      ob_login_ok: '{name} olarak oturum açıldı.',
+      ob_login_failed: 'Oturum açma başarısız.',
+      ob_instance_title: 'İlk örneğini oluştur',
+      ob_instance_hint: 'Bir örnek; kendi sürümü, mod yükleyicisi ve modları olan bir modpack’tir.',
+      ob_instance_create: 'Örnek oluştur',
+      ob_done_title: 'Her şey hazır',
+      ob_done_hint: 'Artık launcher’ı kullanabilirsin. Bu kurulumu daha sonra ayarlardan açabilirsin.',
+      ob_done_summary: '{konten} hesap · {instanzen} örnek',
+      ob_back: 'Geri', ob_next: 'İleri', ob_finish: 'Launcher’ı aç', ob_skip: 'Atla',
+      ob_reopen: 'İlk kurulumu yeniden göster',
+      ob_app_only: 'Yalnızca gerçek uygulamada kullanılabilir.'
+    },
+    ru: {
+      ob_title: 'Добро пожаловать в Liquid Launcher',
+      ob_subtitle: 'Настрой всё за несколько шагов.',
+      ob_step_lang: 'Язык', ob_step_account: 'Аккаунт', ob_step_instance: 'Сборка', ob_step_done: 'Готово',
+      ob_lang_title: 'Выбери язык',
+      ob_lang_hint: 'Язык можно изменить позже в настройках.',
+      ob_account_title: 'Войти через Microsoft',
+      ob_account_hint: 'Нужно для запуска игры и открытия миров. Один раз понадобится client ID из Azure.',
+      ob_account_login: 'Войти через Microsoft',
+      ob_clientid_ok: 'Client ID сохранён — можно войти.',
+      ob_clientid_missing: 'Client ID пока нет. Введи Application (client) ID из портала Azure.',
+      ob_clientid_saved: 'Сохранено: {id}',
+      ob_login_running: 'Открыто окно Microsoft — войди там …',
+      ob_login_ok: 'Вход выполнен как {name}.',
+      ob_login_failed: 'Не удалось войти.',
+      ob_instance_title: 'Создай первую сборку',
+      ob_instance_hint: 'Сборка — это модпак со своей версией, загрузчиком модов и модами.',
+      ob_instance_create: 'Создать сборку',
+      ob_done_title: 'Всё готово',
+      ob_done_hint: 'Теперь можно пользоваться лаунчером. Эту настройку можно снова открыть в параметрах.',
+      ob_done_summary: '{konten} акк. · {instanzen} сборок',
+      ob_back: 'Назад', ob_next: 'Далее', ob_finish: 'Открыть лаунчер', ob_skip: 'Пропустить',
+      ob_reopen: 'Показать первичную настройку снова',
+      ob_app_only: 'Доступно только в настоящем приложении.'
+    }
+  };
+  Object.keys(OB_TEXTE).forEach(code => {
+    if(TRANSLATIONS[code]) Object.assign(TRANSLATIONS[code], OB_TEXTE[code]);
+  });
+
+  // Rueckmeldungen beim Anlegen der ersten Instanz. Eigener kleiner Block,
+  // damit OB_TEXTE uebersichtlich bleibt.
+  const OB_TEXTE_2 = {
+    de: { ob_instance_ok: 'Instanz "{name}" angelegt.', ob_instance_failed: 'Instanz konnte nicht angelegt werden.' },
+    en: { ob_instance_ok: 'Instance "{name}" created.', ob_instance_failed: 'Could not create the instance.' },
+    es: { ob_instance_ok: 'Instancia "{name}" creada.', ob_instance_failed: 'No se pudo crear la instancia.' },
+    fr: { ob_instance_ok: 'Instance « {name} » créée.', ob_instance_failed: "Impossible de créer l'instance." },
+    pt: { ob_instance_ok: 'Instância "{name}" criada.', ob_instance_failed: 'Não foi possível criar a instância.' },
+    it: { ob_instance_ok: 'Istanza "{name}" creata.', ob_instance_failed: "Impossibile creare l'istanza." },
+    pl: { ob_instance_ok: 'Utworzono instancję "{name}".', ob_instance_failed: 'Nie udało się utworzyć instancji.' },
+    tr: { ob_instance_ok: '"{name}" örneği oluşturuldu.', ob_instance_failed: 'Örnek oluşturulamadı.' },
+    ru: { ob_instance_ok: 'Сборка "{name}" создана.', ob_instance_failed: 'Не удалось создать сборку.' }
+  };
+  Object.keys(OB_TEXTE_2).forEach(code => {
+    if(TRANSLATIONS[code]) Object.assign(TRANSLATIONS[code], OB_TEXTE_2[code]);
+  });
+
   const LANGUAGE_NAMES = { de: 'Deutsch', en: 'English', es: 'Español', fr: 'Français', pt: 'Português', it: 'Italiano', pl: 'Polski', tr: 'Türkçe', ru: 'Русский' };
   let currentLang = 'de';
 
@@ -7225,6 +7705,53 @@
     if(skinVollQuelle) skinVollQuelle.textContent = kopfQuelleText();
   }
 
+  // ---------- Skin-Kopf aus der Textur ----------
+  // Der Kopf ist der 8x8-Ausschnitt der 64x64-Vorlage: Vorderseite bei
+  // [8,8], Hut-Ebene (Overlay) bei [40,8]. Beide liegen als zwei
+  // Hintergrundbilder uebereinander - dieselbe Textur wie die Ganzkoerper-
+  // Figur, aus der eigenen Datei oder vom Konto. Ein fremder Dienst wird
+  // NICHT kontaktiert.
+  const KOPF_NEUTRAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
+
+  function skinKopfStil(url, groesse){
+    const s = groesse;
+    const gesamt = (s / 8) * 64;   // 64 Skin-Pixel auf s Bildschirm-Pixel
+    const q = s / 8;               // ein Skin-Pixel in Bildschirm-Pixel
+    const sicher = String(url).replace(/"/g, '%22');
+    return 'width:' + s + 'px;height:' + s + 'px;'
+      + 'background-image:url("' + sicher + '"),url("' + sicher + '");'
+      + 'background-size:' + gesamt + 'px ' + gesamt + 'px;'
+      + 'background-position:' + (-8 * q) + 'px ' + (-8 * q) + 'px,'
+      + (-40 * q) + 'px ' + (-8 * q) + 'px;';
+  }
+
+  // Der Kopf wird als Element gebaut und ueber cssText gestaltet - NICHT als
+  // style="..."-Attributstring: die Anfuehrungszeichen in url("...") wuerden
+  // das Attribut sonst vorzeitig beenden und die Textur bliebe leer.
+  function skinKopfElement(url, groesse){
+    if(!url) return null;
+    const el = document.createElement('span');
+    el.className = 'skin-kopf';
+    el.style.cssText = skinKopfStil(url, groesse);
+    return el;
+  }
+
+  // Setzt den Kopf in ein Feld. Ohne Textur bleibt das neutrale Symbol.
+  function kopfFeldSetzen(el, url, groesse){
+    if(!el) return;
+    el.innerHTML = '';
+    const kopf = skinKopfElement(url, groesse);
+    if(kopf) el.appendChild(kopf);
+    else el.innerHTML = KOPF_NEUTRAL;
+  }
+
+  // Kopf an allen Stellen aktualisieren: Seitenleiste und Profilkarte.
+  function updateSkinKoepfe(){
+    const url = skinTexturUrl();
+    kopfFeldSetzen(avatarFeld, url, 42);
+    kopfFeldSetzen(document.getElementById('profilKopf'), url, 48);
+  }
+
   function updateIdentityUI(activeAccount){
     aktiverSkinAccount = activeAccount || null;
     if(activeAccount){
@@ -7238,6 +7765,7 @@
     }
     skinQuelleSetzen();
     skinVollAktualisieren();
+    updateSkinKoepfe();
   }
 
   // Eigene Datei nachladen. Fehlt der Kanal (Browser-Vorschau) oder schlaegt
@@ -7248,6 +7776,7 @@
       skinDataUri = d && d.dataUri ? d.dataUri : null;
       skinQuelleSetzen();
       skinVollAktualisieren();
+      updateSkinKoepfe();
     }, function(){
       skinDataUri = null;
     });
@@ -7275,6 +7804,7 @@
       skinDataUri = (erg && erg.dataUri) || null;
       skinQuelleSetzen();
       skinVollAktualisieren();
+      updateSkinKoepfe();
     } catch(err){
       skinMeldungZeigen(err && err.message ? err.message : String(err));
     }
@@ -7286,6 +7816,7 @@
       skinDataUri = null;
       skinQuelleSetzen();
       skinVollAktualisieren();
+      updateSkinKoepfe();
       skinMeldungZeigen('');
     } catch(err){
       skinMeldungZeigen(err && err.message ? err.message : String(err));
@@ -7489,8 +8020,14 @@
         ${isActive ? '' : `<button class="mod-action activate">${t('account_activate')}</button>`}
         <button class="mod-action remove">${t('account_remove')}</button>
       `;
-      // Kein Kopfbild mehr: ein neutrales Personen-Symbol.
+      // Kopf aus dem Skin des Kontos; ohne Skin bleibt das neutrale Symbol.
       row.querySelector('.account-head').innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
+      const kopfKnoten = skinKopfElement(acc.skinUrl, 34);
+      if(kopfKnoten){
+        const feld = row.querySelector('.account-head');
+        feld.innerHTML = '';
+        feld.appendChild(kopfKnoten);
+      }
       const activateBtn = row.querySelector('.activate');
       if(activateBtn){
         activateBtn.addEventListener('click', async () => {
@@ -8127,6 +8664,10 @@ const GRID_COLS = 6;
     currentLang = lang;
     applyStaticTranslations();
     renderLangButtons();
+    // Die Startseite hat ihre Texte nicht als data-i18n im Markup, sondern
+    // holt sie hier - so folgt sie der Sprache sofort.
+    obTexteAnwenden();
+    obSpracheZeichnen();
     // Widget-Texte (Kacheln, Verwaltung) folgen der Sprache mit.
     widgetTexteAktualisieren();
     // Alle Stellen mit dynamisch erzeugtem Text neu rendern, damit auch
@@ -8144,6 +8685,257 @@ const GRID_COLS = 6;
     }
   }
 
+  // =================================================================
+  // Erste Einrichtung (Startseite)
+  // =================================================================
+  // Beim ersten Start erscheint diese Seite: Sprache, Microsoft-Konto und die
+  // erste Instanz. Sie laesst sich ueberspringen und spaeter ueber die
+  // Einstellungen erneut oeffnen. Die Texte holt sie ueber obTexteAnwenden()
+  // aus t() - so bleibt der Bereich in jeder Sprache und waechst nicht mit
+  // jedem Sprachblock mit.
+  const OB_REIHENFOLGE = ['sprache', 'konto', 'instanz', 'fertig'];
+  const OB_SCHRITT_TEXT = { sprache: 'ob_step_lang', konto: 'ob_step_account', instanz: 'ob_step_instance', fertig: 'ob_step_done' };
+  const obEl = document.getElementById('onboarding');
+  let obAktuell = 'sprache';
+
+  function obTexteAnwenden(){
+    const setze = (id, schluessel) => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = t(schluessel);
+    };
+    setze('obTitel', 'ob_title');
+    setze('obSub', 'ob_subtitle');
+    setze('obLangTitle', 'ob_lang_title');
+    setze('obLangHint', 'ob_lang_hint');
+    setze('obAccountTitle', 'ob_account_title');
+    setze('obAccountHint', 'ob_account_hint');
+    setze('obClientIdSave', 'settings_microsoft_save');
+    setze('obLoginBtn', 'ob_account_login');
+    setze('obInstTitle', 'ob_instance_title');
+    setze('obInstHint', 'ob_instance_hint');
+    setze('obInstNameLabel', 'inst_name_label');
+    setze('obInstVersionLabel', 'inst_version_label');
+    setze('obInstLoaderLabel', 'inst_loader_label');
+    setze('obInstCreate', 'ob_instance_create');
+    setze('obDoneTitle', 'ob_done_title');
+    setze('obDoneHint', 'ob_done_hint');
+    setze('obSkip', 'ob_skip');
+    setze('obZurueck', 'ob_back');
+    setze('obWeiter', obAktuell === 'fertig' ? 'ob_finish' : 'ob_next');
+    setze('obErneutBtn', 'ob_reopen');
+    document.querySelectorAll('.ob-schritt').forEach(btn => {
+      const label = btn.querySelector('.ob-label');
+      const schluessel = OB_SCHRITT_TEXT[btn.dataset.obStep];
+      if(label && schluessel) label.textContent = t(schluessel);
+    });
+  }
+
+  function obSpracheZeichnen(){
+    const reihe = document.getElementById('obLangRow');
+    if(!reihe) return;
+    reihe.innerHTML = '';
+    Object.keys(LANGUAGE_NAMES).forEach(code => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mod-action lang-btn' + (code === currentLang ? ' lang-active' : '');
+      btn.textContent = LANGUAGE_NAMES[code];
+      btn.addEventListener('click', () => setLanguage(code));
+      reihe.appendChild(btn);
+    });
+  }
+
+  function obStatus(id, text, art){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = text || '';
+    el.className = 'ob-status' + (art ? ' ' + art : '');
+    el.hidden = !text;
+  }
+
+  function obSeitenSetzen(){
+    const i = OB_REIHENFOLGE.indexOf(obAktuell);
+    document.querySelectorAll('.ob-seite').forEach(sec => {
+      sec.hidden = sec.dataset.obPage !== obAktuell;
+    });
+    document.querySelectorAll('.ob-schritt').forEach(btn => {
+      const j = OB_REIHENFOLGE.indexOf(btn.dataset.obStep);
+      btn.classList.toggle('aktiv', j === i);
+      btn.classList.toggle('erledigt', j < i);
+    });
+    const zurueck = document.getElementById('obZurueck');
+    if(zurueck) zurueck.disabled = i === 0;
+    obTexteAnwenden();
+  }
+
+  async function obKontoZeigen(){
+    obStatus('obLoginStatus', '');
+    if(!window.launcher || !window.launcher.auth || !window.launcher.auth.getClientId){
+      obStatus('obClientIdStatus', t('ob_app_only'), 'err');
+      return;
+    }
+    try {
+      const info = await window.launcher.auth.getClientId();
+      const feld = document.getElementById('obClientId');
+      if(feld) feld.value = (info && info.clientId) || '';
+      if(info && info.configured) obStatus('obClientIdStatus', t('ob_clientid_ok'), 'ok');
+      else obStatus('obClientIdStatus', t('ob_clientid_missing'), 'err');
+    } catch(err){
+      obStatus('obClientIdStatus', err && err.message ? err.message : String(err), 'err');
+    }
+  }
+
+  async function obInstanzZeigen(){
+    obStatus('obInstStatus', '');
+    const sel = document.getElementById('obInstVersion');
+    if(!sel || sel.dataset.gefuellt === '1') return;
+    sel.innerHTML = '';
+    const laden = document.createElement('option');
+    laden.value = ''; laden.disabled = true; laden.textContent = t('inst_versions_lade');
+    sel.appendChild(laden);
+    const liste = await versionenLaden();
+    sel.innerHTML = '';
+    if(!liste.length){
+      const leer = document.createElement('option');
+      leer.value = ''; leer.disabled = true; leer.textContent = t('inst_versions_leer');
+      sel.appendChild(leer);
+      return;
+    }
+    liste.forEach(v => {
+      const opt = document.createElement('option');
+      const id = typeof v === 'string' ? v : v.id;
+      opt.value = id;
+      opt.textContent = (typeof v === 'object' && v.typ && v.typ !== 'release') ? id + ' (' + v.typ + ')' : id;
+      sel.appendChild(opt);
+    });
+    sel.dataset.gefuellt = '1';
+  }
+
+  async function obAbschlussZeigen(){
+    let konten = 0, instanzen = 0;
+    try { if(window.launcher && window.launcher.auth) konten = (await window.launcher.auth.listAccounts()).length; } catch(_){}
+    try { if(window.launcher && window.launcher.instances) instanzen = (await window.launcher.instances.list()).length; } catch(_){}
+    obStatus('obDoneStatus', t('ob_done_summary', { konten, instanzen }), 'ok');
+  }
+
+  function obSeiteSetzen(seite){
+    if(OB_REIHENFOLGE.indexOf(seite) === -1) return;
+    obAktuell = seite;
+    obTexteAnwenden();
+    obSeitenSetzen();
+    if(seite === 'konto') obKontoZeigen();
+    if(seite === 'instanz') obInstanzZeigen();
+    if(seite === 'fertig') obAbschlussZeigen();
+  }
+
+  function obOeffnen(){
+    if(!obEl) return;
+    obAktuell = 'sprache';
+    obSpracheZeichnen();
+    obSeitenSetzen();
+    obEl.hidden = false;
+  }
+
+  function obSchliessen(speichern){
+    if(!obEl) return;
+    obEl.hidden = true;
+    if(speichern && window.launcher && window.launcher.settings){
+      Promise.resolve(window.launcher.settings.set({ onboardingDone: true })).catch(() => {});
+    }
+  }
+
+  // Beim Start pruefen: nur zeigen, wenn die Einrichtung noch nicht
+  // abgeschlossen wurde. Ein fehlender Wert (Altbestand) zaehlt als "noch
+  // nicht abgeschlossen".
+  function obPruefen(settings){
+    if(!settings || settings.onboardingDone !== true) obOeffnen();
+  }
+
+  document.getElementById('obWeiter')?.addEventListener('click', () => {
+    const i = OB_REIHENFOLGE.indexOf(obAktuell);
+    if(i < OB_REIHENFOLGE.length - 1) obSeiteSetzen(OB_REIHENFOLGE[i + 1]);
+    else obSchliessen(true);
+  });
+  document.getElementById('obZurueck')?.addEventListener('click', () => {
+    const i = OB_REIHENFOLGE.indexOf(obAktuell);
+    if(i > 0) obSeiteSetzen(OB_REIHENFOLGE[i - 1]);
+  });
+  document.getElementById('obSkip')?.addEventListener('click', () => obSchliessen(true));
+  document.getElementById('obErneutBtn')?.addEventListener('click', () => obOeffnen());
+  document.querySelectorAll('.ob-schritt').forEach(btn => {
+    btn.addEventListener('click', () => obSeiteSetzen(btn.dataset.obStep));
+  });
+
+  document.getElementById('obClientIdSave')?.addEventListener('click', async () => {
+    const btn = document.getElementById('obClientIdSave');
+    const feld = document.getElementById('obClientId');
+    if(!window.launcher || !window.launcher.auth || !window.launcher.auth.setClientId){
+      obStatus('obClientIdStatus', t('ob_app_only'), 'err');
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const res = await window.launcher.auth.setClientId(feld ? feld.value : '');
+      if(feld) feld.value = (res && res.clientId) || '';
+      obStatus('obClientIdStatus', t('ob_clientid_saved', { id: (res && res.clientId) || '' }), 'ok');
+    } catch(err){
+      obStatus('obClientIdStatus', err && err.message ? err.message : String(err), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('obLoginBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('obLoginBtn');
+    if(!window.launcher || !window.launcher.auth || !window.launcher.auth.addAccount){
+      obStatus('obLoginStatus', t('ob_app_only'), 'err');
+      return;
+    }
+    btn.disabled = true;
+    obStatus('obLoginStatus', t('ob_login_running'));
+    try {
+      const account = await window.launcher.auth.addAccount();
+      renderAccounts();
+      updateIdentityUI(await authGetActive());
+      obStatus('obLoginStatus', t('ob_login_ok', { name: account.username }), 'ok');
+    } catch(err){
+      renderAccounts();
+      obStatus('obLoginStatus', err && err.message ? err.message : t('ob_login_failed'), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('obInstCreate')?.addEventListener('click', async () => {
+    const btn = document.getElementById('obInstCreate');
+    const nameFeld = document.getElementById('obInstName');
+    const versionFeld = document.getElementById('obInstVersion');
+    const loaderFeld = document.getElementById('obInstLoader');
+    if(!window.launcher || !window.launcher.instances || !window.launcher.instances.create){
+      obStatus('obInstStatus', t('ob_app_only'), 'err');
+      return;
+    }
+    const version = versionFeld ? versionFeld.value : '';
+    if(!version){
+      obStatus('obInstStatus', t('inst_versions_leer'), 'err');
+      return;
+    }
+    const name = ((nameFeld && nameFeld.value) || '').trim() || 'Mein Modpack';
+    btn.disabled = true;
+    try {
+      await window.launcher.instances.create({
+        name,
+        version,
+        modloader: loaderFeld ? loaderFeld.value : 'vanilla'
+      });
+      await loadInstances();
+      obStatus('obInstStatus', t('ob_instance_ok', { name }), 'ok');
+    } catch(err){
+      obStatus('obInstStatus', err && err.message ? err.message : t('ob_instance_failed'), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   // Beim Start: gespeicherte Sprache laden (falls vorhanden), sonst bei
   // Deutsch bleiben — die HTML-Datei zeigt ohnehin schon deutschen Text als
   // Fallback, JS schaltet nur zusätzlich zwischen den Sprachen um.
@@ -8153,7 +8945,14 @@ const GRID_COLS = 6;
   if(window.launcher && window.launcher.settings){
     window.launcher.settings.get().then(s => {
       if(s && s.language && TRANSLATIONS[s.language]) setLanguage(s.language);
+      // Erste Einrichtung: nur beim ersten Start (settings.json ohne
+      // onboardingDone) erscheint die Startseite.
+      obPruefen(s);
     }).catch(() => {});
+  } else {
+    // Browser-Vorschau ohne Electron: die Startseite trotzdem zeigen, damit
+    // sie sich ohne Bau ansehen laesst.
+    obOeffnen();
   }
   // ---------- Schnellzugriff auf der Startseite ----------
   // Alle Knoepfe, die es vorher nur in der Seitenleiste gab. Sie rufen genau

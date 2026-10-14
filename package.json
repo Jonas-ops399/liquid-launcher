@@ -1,7 +1,7 @@
 {
   "name": "liquid-launcher",
   "productName": "Liquid Launcher",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Inoffizieller Minecraft-Launcher mit Liquid-Glass-UI (kein Mojang-Branding)",
   "main": "src/main/main.js",
   "scripts": {

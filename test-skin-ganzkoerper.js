@@ -1,7 +1,8 @@
 // test-skin-ganzkoerper.js  (laeuft unter reinem Node: node test-skin-ganzkoerper.js)
-// Vertrag der Skin-Anzeige nach dem Umbau: keine Kopf-Ansicht mehr, die
-// Seitenleiste oeffnet direkt die Ganzkoerper-Figur, Auswahl und Entfernen
-// sitzen dort, und die zweite Ebene (Hut, Jacke, Aermel, Hose) wird gebaut.
+// Vertrag der Ganzkoerper-Skin-Anzeige: die Seitenleiste oeffnet direkt die
+// Ganzkoerper-Figur, Auswahl und Entfernen sitzen dort, und die zweite Ebene
+// (Hut, Jacke, Aermel, Hose) wird gebaut. Den Kopf an den drei Stellen
+// (Seitenleiste, Profilkarte, Kontoliste) prueft test-startseite.js.
 const fs = require('node:fs'), path = require('node:path');
 const HTML = fs.readFileSync(path.join(__dirname, 'src', 'renderer', 'index.html'), 'utf-8');
 let n = 0, bad = 0;
