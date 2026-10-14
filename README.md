@@ -1312,7 +1312,7 @@ node_modules\electron\dist\electron.exe test-schnellzugriff-fenster.js # echtes 
 node_modules\electron\dist\electron.exe test-modpacks-fenster.js      # echtes Fenster (74)
 node_modules\electron\dist\electron.exe test-modpack-import-fenster.js # echtes Fenster: Import-Dialog, Suche, 4 Sprachen (57)
 node_modules\electron\dist\electron.exe test-ressourcenpakete-fenster.js # echtes Fenster: Ansicht, Schalter, Loeschen (63)
-node test-skin-ganzkoerper.js       # Skin ohne Kopfanzeige: Ganzkoerper, zweite Ebene (15 Prüfungen)
+node test-skin-ganzkoerper.js       # Ganzkoerper-Figur, zweite Ebene (15 Prüfungen)
 node test-startseite.js             # Skin-Kopf an drei Stellen, erste Einrichtung (54 Prüfungen)
 ```
 
